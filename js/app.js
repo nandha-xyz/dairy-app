@@ -1147,21 +1147,30 @@ async function updateUIForSession(session) {
     }
   } else {
     window.__dairyAppCurrentUser = null;
+    stopDriverTracking();
     if (appRoot) appRoot.style.display = 'none';
     if (authContainer) authContainer.style.display = 'flex';
   }
 }
 
-let driverTrackingInterval = null;
+let driverWatchId = null;
+
+function stopDriverTracking() {
+  if (driverWatchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(driverWatchId);
+    driverWatchId = null;
+  }
+}
+
 function startDriverTracking(driverId) {
-  if (driverTrackingInterval) clearInterval(driverTrackingInterval);
+  stopDriverTracking();
   
   if (!navigator.geolocation) {
     console.warn("Geolocation is not supported by this browser.");
     return;
   }
   
-  driverTrackingInterval = navigator.geolocation.watchPosition(async (position) => {
+  driverWatchId = navigator.geolocation.watchPosition(async (position) => {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
     try {
