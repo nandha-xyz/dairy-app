@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="css/views.css?v=300">
   <!-- Supabase Official Browser CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Leaflet.js Open-Source Embedded Map Library -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <!-- Authentication Overlay (Supabase Auth Screen) -->
@@ -79,6 +82,10 @@
       </div>
 
       <nav class="sidebar-nav">
+        <a href="#driver-dashboard" class="nav-link" data-view="driver-dashboard" title="Driver Route" style="display: none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          <span>Driver Route</span>
+        </a>
         <a href="#dashboard" class="nav-link active" data-view="dashboard" title="Dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           <span>Dashboard</span>
@@ -90,6 +97,14 @@
         <a href="#stores" class="nav-link" data-view="stores" title="Stores Directory">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Stores</span>
+        </a>
+        <a href="#store-map" class="nav-link" data-view="store-map" title="Store Map">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <span>Store Map</span>
+        </a>
+        <a href="#delivery-dispatch" class="nav-link" data-view="delivery-dispatch" title="Delivery Dispatch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          <span>Delivery Dispatch</span>
         </a>
         <a href="#products" class="nav-link" data-view="products" title="Product Catalog">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
@@ -122,7 +137,7 @@
           <div class="admin-avatar" id="user-avatar-badge">AD</div>
           <div class="admin-info" style="overflow:hidden; text-overflow:ellipsis;">
             <div class="name" id="user-email-display" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px;">Admin</div>
-            <div class="role">Coimbatore Region</div>
+            <div class="role" id="user-role-display">Admin Role</div>
           </div>
         </div>
         <button id="btn-signout" class="btn btn-secondary btn-sm" style="padding:0.35rem 0.55rem; font-size:0.75rem; background:#1E293B; border-color:#334155; color:#F1F5F9; border-radius:6px;" title="Sign Out">
@@ -166,6 +181,9 @@
         </div>
 
         <div class="top-bar-actions">
+          <button id="btn-manage-driver-routes" class="btn btn-secondary btn-sm" style="display:none; font-weight:700;">
+            🚛 Assign Drivers
+          </button>
           <div class="date-selector-wrapper">
             <label for="global-date-picker">Date:</label>
             <input type="date" id="global-date-picker" />

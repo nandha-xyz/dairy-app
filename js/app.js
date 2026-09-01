@@ -1,5 +1,5 @@
 import { getTodayDateString } from './data/seededData.js';
-import { storesRepository, productsRepository, paymentsRepository, requirementsRepository, dataStore } from './repositories/index.js';
+import { storesRepository, productsRepository, paymentsRepository, requirementsRepository, invoicesRepository, userRolesRepository, deliveryRunsRepository, dataStore } from './repositories/index.js';
 import { workflowEngine } from './services/workflowEngine.js';
 import { aiCopilotService } from './services/aiCopilot.js';
 import { aiAgentEngine } from './services/aiAgentEngine.js';
@@ -16,6 +16,9 @@ import { invoicesView } from './views/invoicesView.js';
 import { paymentsView } from './views/paymentsView.js';
 import { reportsView } from './views/reportsView.js';
 import { settingsView } from './views/settingsView.js';
+import { driverDashboardView } from './views/driverDashboardView.js';
+import { adminStoreMapView } from './views/adminStoreMapView.js';
+import { adminDeliveryRunView } from './views/adminDeliveryRunView.js';
 
 class AppController {
   constructor() {
@@ -24,6 +27,8 @@ class AppController {
     this.selectedStoreId = null;
     this.selectedInvoiceId = null;
     this.activeStoreTab = 'overview';
+    this.activeMapFilter = 'all';
+    this.userRole = 'pending';
     this.init();
   }
 
@@ -47,12 +52,81 @@ class AppController {
 
     // Bind AI Copilot chat listeners
     this.bindAICopilot();
+
+    // Form submission handlers
+    document.addEventListener('submit', async (e) => {
+      if (e.target.id === 'form-create-delivery-run') {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const driverId = formData.get('driverId')?.trim();
+        const runDate = formData.get('date');
+        const notes = formData.get('notes')?.trim() || '';
+
+        const storeIds = formData.getAll('storeIds');
+        if (!driverId || storeIds.length === 0) {
+          alert('Please enter a driver User ID and select at least one store.');
+          return;
+        }
+
+        try {
+          const reqs = requirementsRepository.getByDate(runDate);
+          const stores = storesRepository.getAll();
+
+          const stops = storeIds.map(sId => {
+            const store = stores.find(st => st.id === sId);
+            const req = reqs.find(r => r.storeId === sId);
+            const seqVal = formData.get(`seq_${sId}`) || 1;
+
+            const stopItems = (req && req.items) ? req.items.map(item => ({
+              product_name: item.productName || item.name,
+              quantity: item.quantity,
+              unit: item.unit || 'Pkt'
+            })) : [];
+
+            return {
+              store_id: sId,
+              sequence: Number(seqVal),
+              store_name: store ? store.name : 'Store',
+              address: store ? (store.address || store.location) : '',
+              location: store ? store.location : '',
+              latitude: store ? store.latitude : null,
+              longitude: store ? store.longitude : null,
+              contact_person: store ? store.contactPerson : '',
+              phone: store ? store.phone : '',
+              driver_notes: store ? store.driverNotes : '',
+              google_maps_url: store ? store.googleMapsUrl : '',
+              items: stopItems
+            };
+          });
+
+          await deliveryRunsRepository.createRun({
+            driver_id: driverId,
+            date: runDate,
+            notes: notes,
+            stops: stops
+          });
+
+          this.closeModal();
+          this.renderCurrentView();
+          alert('✅ Delivery run created successfully and dispatched to driver!');
+        } catch(err) {
+          alert(`⚠️ Create Delivery Run Failed: ${err.message}`);
+        }
+      }
+    });
   }
 
   handleNavigation() {
     const hash = window.location.hash.substring(1) || 'dashboard';
     const parts = hash.split('/');
-    this.currentView = parts[0];
+
+    if (this.userRole === 'driver') {
+      this.currentView = 'driver-dashboard';
+    } else if (this.userRole === 'pending') {
+      this.currentView = 'access-pending';
+    } else {
+      this.currentView = parts[0] === 'driver-dashboard' ? 'dashboard' : parts[0];
+    }
 
     if (parts[0] === 'store-detail' && parts[1]) {
       this.selectedStoreId = parts[1];
@@ -61,18 +135,18 @@ class AppController {
       this.selectedInvoiceId = parts[1];
     }
 
-    // Bind sidebar collapse toggle button
+    // Sidebar collapse
     const collapseBtn = document.getElementById('btn-toggle-sidebar-collapse');
     const appRoot = document.getElementById('app-root');
     if (collapseBtn && appRoot) {
-      collapseBtn.addEventListener('click', () => {
+      collapseBtn.onclick = () => {
         appRoot.classList.toggle('sidebar-collapsed');
         const isCollapsed = appRoot.classList.contains('sidebar-collapsed');
         collapseBtn.textContent = isCollapsed ? '▶' : '◀';
-      });
+      };
     }
 
-    // Mobile slide-out sidebar overlay
+    // Mobile slide-out menu
     const mobileToggle = document.getElementById('btn-toggle-sidebar');
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
@@ -84,14 +158,10 @@ class AppController {
       }
     };
 
-    if (mobileToggle) {
-      mobileToggle.addEventListener('click', toggleMobileMenu);
-    }
-    if (sidebarOverlay) {
-      sidebarOverlay.addEventListener('click', toggleMobileMenu);
-    }
+    if (mobileToggle) mobileToggle.onclick = toggleMobileMenu;
+    if (sidebarOverlay) sidebarOverlay.onclick = toggleMobileMenu;
 
-    // Update sidebar & mobile bottom nav active links
+    // Active links
     document.querySelectorAll('.nav-link, .mobile-nav-btn').forEach(link => {
       if (link.getAttribute('data-view') === this.currentView) {
         link.classList.add('active');
@@ -113,6 +183,45 @@ class AppController {
     const titleElem = document.getElementById('top-bar-title');
     const subtitleElem = document.getElementById('top-bar-subtitle');
 
+    if (!viewport || !titleElem || !subtitleElem) return;
+
+    if (this.userRole === 'pending') {
+      titleElem.textContent = 'Account Authorization Required';
+      subtitleElem.textContent = 'Contact your system administrator for role assignment';
+      viewport.innerHTML = `
+        <div style="max-width: 550px; margin: 3rem auto; padding: 0 1rem;">
+          <div class="card" style="text-align: center; padding: 3rem 1.5rem; border-radius: 16px;">
+            <div style="width: 72px; height: 72px; margin: 0 auto 1.25rem auto; background: #FEF3C7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; color: #D97706;">
+              🔒
+            </div>
+            <h3 style="font-size: 1.3rem; font-weight: 800; color: #0F172A; margin: 0 0 0.5rem 0;">Access Authorization Pending</h3>
+            <p style="font-size: 0.9rem; color: #64748B; margin: 0 0 1.5rem 0; line-height: 1.5;">
+              Your account has been created successfully, but your role (<strong>Admin</strong> or <strong>Driver</strong>) has not been assigned in Supabase yet.
+            </p>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 8px; font-size: 0.8rem; color: #334155; text-align: left; margin-bottom: 1.5rem;">
+              <strong>Admin Instruction:</strong><br/>
+              Run the following query in your Supabase SQL Editor to grant access:<br/>
+              <code style="display: block; background: #EFF6FF; padding: 0.4rem; margin-top: 0.4rem; border-radius: 4px; color: #2563EB; font-size: 0.75rem;">
+                INSERT INTO public.user_roles (user_id, role) VALUES ('${authService.getUser()?.id || 'UUID'}', 'admin');
+              </code>
+            </div>
+            <button class="btn btn-secondary" onclick="window.location.reload();">🔄 Refresh Page</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (this.userRole === 'driver') {
+      this.currentView = 'driver-dashboard';
+      titleElem.textContent = "Driver Delivery Portal";
+      subtitleElem.textContent = `Today's pickup manifest & assigned route stops • ${this.currentDate}`;
+      const user = authService.getUser();
+      const runs = deliveryRunsRepository.getByDriverAndDate(user ? user.id : '', this.currentDate);
+      viewport.innerHTML = driverDashboardView.render(runs, this.currentDate);
+      return;
+    }
+
     switch (this.currentView) {
       case 'dashboard':
         titleElem.textContent = 'Dashboard';
@@ -131,6 +240,19 @@ class AppController {
         titleElem.textContent = 'Stores Directory';
         subtitleElem.textContent = 'Registered retail distribution partners';
         viewport.innerHTML = storesView.renderList();
+        break;
+
+      case 'store-map':
+        titleElem.textContent = 'Store Geolocation Directory';
+        subtitleElem.textContent = 'Store location coordinates and Google Maps integration';
+        viewport.innerHTML = adminStoreMapView.render(this.currentDate, this.activeMapFilter);
+        setTimeout(() => adminStoreMapView.initLeafletMap(), 100);
+        break;
+
+      case 'delivery-dispatch':
+        titleElem.textContent = 'Delivery Dispatcher';
+        subtitleElem.textContent = 'Create driver runs, sequence stops, and dispatch routes';
+        viewport.innerHTML = adminDeliveryRunView.render(this.currentDate);
         break;
 
       case 'store-detail':
@@ -178,22 +300,70 @@ class AppController {
 
       case 'settings':
         titleElem.textContent = 'Settings';
-        subtitleElem.textContent = 'Business preferences & demo data control';
+        subtitleElem.textContent = 'System preferences and data backups';
         viewport.innerHTML = settingsView.render();
         this.bindSettingsEvents();
         break;
 
       default:
+        titleElem.textContent = 'Dashboard';
+        subtitleElem.textContent = `Daily operations overview • ${this.currentDate}`;
         viewport.innerHTML = dashboardView.render(this.currentDate);
     }
   }
 
   bindGlobalEvents() {
-    document.addEventListener('click', (e) => {
-      // Enter requirement drawer trigger
-      const reqBtn = e.target.closest('.btn-enter-req');
-      if (reqBtn) {
-        const storeId = reqBtn.dataset.storeId;
+    document.addEventListener('click', async (e) => {
+      // Driver action: Mark Stop as Delivered via RPC
+      const markDeliveredBtn = e.target.closest('.btn-mark-stop-delivered');
+      if (markDeliveredBtn && markDeliveredBtn.dataset.stopId) {
+        try {
+          await deliveryRunsRepository.updateStopStatus(markDeliveredBtn.dataset.stopId, 'Delivered');
+          this.renderCurrentView();
+        } catch(err) {
+          alert(`⚠️ Failed to update delivery status: ${err.message}`);
+        }
+      }
+
+      const markPendingBtn = e.target.closest('.btn-mark-stop-pending');
+      if (markPendingBtn && markPendingBtn.dataset.stopId) {
+        try {
+          await deliveryRunsRepository.updateStopStatus(markPendingBtn.dataset.stopId, 'Pending');
+          this.renderCurrentView();
+        } catch(err) {
+          alert(`⚠️ Failed to update delivery status: ${err.message}`);
+        }
+      }
+
+      // Admin Map filter buttons
+      const mapFilterBtn = e.target.closest('.filter-map-btn');
+      if (mapFilterBtn && mapFilterBtn.dataset.filter) {
+        this.activeMapFilter = mapFilterBtn.dataset.filter;
+        this.renderCurrentView();
+      }
+
+      // Open Create Delivery Run Modal
+      if (e.target.closest('#btn-create-delivery-run')) {
+        this.openCreateDeliveryRunModal();
+      }
+
+      // Delete Delivery Run
+      const delRunBtn = e.target.closest('.btn-delete-delivery-run');
+      if (delRunBtn && delRunBtn.dataset.runId) {
+        if (confirm('🗑️ Delete this delivery run and its assigned stops?')) {
+          try {
+            await deliveryRunsRepository.deleteRun(delRunBtn.dataset.runId);
+            this.renderCurrentView();
+          } catch(err) {
+            alert(`⚠️ Delete Run Failed: ${err.message}`);
+          }
+        }
+      }
+
+      // Enter requirement for store
+      const enterReqBtn = e.target.closest('.btn-enter-req');
+      if (enterReqBtn && enterReqBtn.dataset.storeId) {
+        const storeId = enterReqBtn.dataset.storeId;
         this.openRequirementDrawer(storeId);
       }
 
@@ -286,259 +456,31 @@ class AppController {
       if (deleteProductBtn && deleteProductBtn.dataset.productId) {
         const productId = deleteProductBtn.dataset.productId;
         const product = productsRepository.getById(productId);
-        if (confirm(`🗑️ Delete Product "${product ? product.name : 'Product'}"?\n\nThis will permanently remove this product from catalog.`)) {
+        if (confirm(`🗑️ Delete Product "${product ? product.name : 'Product'}"?\n\nThis will permanently remove this product from Supabase catalog.`)) {
           this.handleDeleteProduct(productId);
         }
       }
 
-      // Delete Invoice handler
-      const deleteInvBtn = e.target.closest('.btn-delete-invoice');
-      if (deleteInvBtn && deleteInvBtn.dataset.invoiceId) {
-        const invoiceId = deleteInvBtn.dataset.invoiceId;
-        const inv = invoicesRepository.getById(invoiceId);
-        if (confirm(`🗑️ Delete Invoice "${inv ? inv.invoiceNumber : 'Invoice'}"?\n\nThis will remove the invoice record from Supabase.`)) {
+      // Edit & Delete Invoice handlers
+      const deleteInvoiceBtn = e.target.closest('.btn-delete-invoice');
+      if (deleteInvoiceBtn && deleteInvoiceBtn.dataset.invoiceId) {
+        const invoiceId = deleteInvoiceBtn.dataset.invoiceId;
+        if (confirm(`🗑️ Delete Invoice #${invoiceId}?\n\nThis will remove the billing record from Supabase.`)) {
           this.handleDeleteInvoice(invoiceId);
         }
       }
 
-      // Export Data buttons
-      if (e.target.closest('#btn-export-json')) {
-        exportService.exportFullBackupJSON();
-      }
-      if (e.target.closest('#btn-export-stores-csv')) {
-        exportService.exportStoresCSV();
-      }
-      if (e.target.closest('#btn-export-products-csv')) {
-        exportService.exportProductsCSV();
-      }
-      if (e.target.closest('#btn-export-invoices-csv')) {
-        exportService.exportInvoicesCSV();
-      }
-      if (e.target.closest('#btn-export-payments-csv')) {
-        exportService.exportPaymentsCSV();
-      }
-    });
-
-    // Form submission handlers
-    document.addEventListener('submit', async (e) => {
-      if (e.target.id === 'payment-form') {
-        e.preventDefault();
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const origText = submitBtn ? submitBtn.textContent : '';
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving Payment...'; }
-
-        const formData = new FormData(e.target);
-        const paymentData = {
-          invoiceId: formData.get('invoiceId'),
-          storeId: formData.get('storeId'),
-          storeName: formData.get('storeName'),
-          amount: parseFloat(formData.get('amount')) || 0,
-          date: formData.get('date'),
-          mode: formData.get('method'),
-          referenceNumber: formData.get('referenceNumber'),
-          notes: formData.get('notes')
-        };
-
-        try {
-          await paymentsRepository.recordPayment(paymentData);
-          await dataStore.syncAllFromSupabase();
-          this.closeModal();
-          this.renderCurrentView();
-        } catch (err) {
-          alert(`⚠️ Supabase Save Failed: ${err.message}`);
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
-        }
-      }
-
-      if (e.target.id === 'add-store-form') {
-        e.preventDefault();
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const origText = submitBtn ? submitBtn.textContent : '';
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving to Cloud...'; }
-
-        const formData = new FormData(e.target);
-        const existingStoreId = formData.get('storeId');
-        const existingCode = formData.get('code');
-        const existingStore = existingStoreId ? storesRepository.getById(existingStoreId) : null;
-
-        const storeObj = {
-          id: existingStoreId || `s-${Date.now()}`,
-          code: existingCode || `STR-${formData.get('location').substring(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-          name: formData.get('name'),
-          location: formData.get('location'),
-          contactPerson: formData.get('contactPerson'),
-          phone: formData.get('phone'),
-          status: existingStore ? existingStore.status : 'Active',
-          address: formData.get('address'),
-          recurringRequirements: existingStore ? (existingStore.recurringRequirements || {}) : {}
-        };
-
-        try {
-          await storesRepository.save(storeObj);
-          await dataStore.syncAllFromSupabase();
-          this.closeModal();
-          this.renderCurrentView();
-        } catch (err) {
-          alert(`⚠️ Supabase Save Failed: ${err.message}`);
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
-        }
-      }
-
-      if (e.target.id === 'add-product-form') {
-        e.preventDefault();
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const origText = submitBtn ? submitBtn.textContent : '';
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving to Cloud...'; }
-
-        const formData = new FormData(e.target);
-        const existingProductId = formData.get('productId');
-        const existingSku = formData.get('sku');
-        const existingProd = existingProductId ? productsRepository.getById(existingProductId) : null;
-
-        const prodObj = {
-          id: existingProductId || `p-${Date.now()}`,
-          sku: existingSku || `PRD-${formData.get('name').substring(0, 3).toUpperCase()}-0${Math.floor(1 + Math.random() * 9)}`,
-          name: formData.get('name'),
-          category: formData.get('category'),
-          unit: formData.get('unit'),
-          sellingPrice: parseFloat(formData.get('sellingPrice')) || 0,
-          purchasePrice: parseFloat(formData.get('purchasePrice')) || 0,
-          taxPercent: parseFloat(formData.get('taxPercent')) || 0,
-          active: existingProd ? existingProd.active : true
-        };
-
-        try {
-          await productsRepository.save(prodObj);
-          await dataStore.syncAllFromSupabase();
-          this.closeModal();
-          this.renderCurrentView();
-        } catch (err) {
-          alert(`⚠️ Supabase Save Failed: ${err.message}`);
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
-        }
+      // Fast requirement drawer close
+      if (e.target.id === 'btn-close-drawer') {
+        this.closeRequirementDrawer();
       }
     });
   }
 
-  autoFillAllPendingStores() {
-    const storeStatuses = workflowEngine.getStoreRequirementStatusList(this.currentDate);
-    const pendingStores = storeStatuses.filter(s => s.requirement.status === 'Pending');
-
-    if (pendingStores.length === 0) {
-      alert('All stores have already submitted requirements today!');
-      return;
-    }
-
-    if (confirm(`Auto-fill requirements for ${pendingStores.length} pending stores using previous day's orders?`)) {
-      pendingStores.forEach(s => {
-        const req = workflowEngine.getStoreRequirementForDate(s.store.id, this.currentDate);
-        req.status = 'Confirmed';
-        req.lastUpdated = 'Auto-filled by Admin';
-        requirementsRepository.save(req);
-      });
-
-      this.renderCurrentView();
-    }
-  }
-
-  bindAICopilot() {
-    const toggleBtn = document.getElementById('btn-toggle-ai-chat');
-    const closeBtn = document.getElementById('btn-close-ai-chat');
-    const chatWindow = document.getElementById('ai-chat-window');
-    const sendBtn = document.getElementById('btn-send-ai-message');
-    const chatInput = document.getElementById('ai-chat-input');
-    const chatMessages = document.getElementById('ai-chat-messages');
-
-    if (!toggleBtn || !chatWindow) return;
-
-    const toggleChat = () => {
-      const isVisible = window.getComputedStyle(chatWindow).display !== 'none';
-      chatWindow.style.display = isVisible ? 'none' : 'flex';
-      if (!isVisible) chatInput?.focus();
-    };
-
-    toggleBtn.addEventListener('click', toggleChat);
-
-    closeBtn?.addEventListener('click', () => {
-      chatWindow.style.display = 'none';
-    });
-
-    const submitUserQuery = (queryText) => {
-      if (!queryText.trim()) return;
-
-      // Append User message bubble
-      const userMsgDiv = document.createElement('div');
-      userMsgDiv.className = 'ai-msg user';
-      userMsgDiv.style.cssText = 'align-self: flex-end; background: var(--accent-primary); color: white; padding: 0.7rem 0.9rem; border-radius: 12px 12px 0 12px; font-size: 0.85rem; max-width: 85%;';
-      userMsgDiv.textContent = queryText;
-      chatMessages.appendChild(userMsgDiv);
-
-      chatInput.value = '';
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-
-      // Process query via aiCopilotService
-      setTimeout(async () => {
-        const response = aiCopilotService.processQuery(queryText, this.currentDate);
-        const botMsgDiv = document.createElement('div');
-        botMsgDiv.className = 'ai-msg bot';
-        botMsgDiv.style.cssText = 'align-self: flex-start; background: white; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 12px 12px 12px 0; font-size: 0.85rem; color: var(--text-primary); max-width: 90%; line-height:1.45; box-shadow:0 2px 8px rgba(0,0,0,0.05);';
-
-        if (response.type === 'html' || response.type === 'agent_action') {
-          botMsgDiv.innerHTML = response.message.replace(/\n/g, '<br>');
-        } else {
-          botMsgDiv.innerText = response.message;
-        }
-
-        chatMessages.appendChild(botMsgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        // If the AI response contains an Autonomous Screen Control action payload, execute it!
-        if (response.action) {
-          await aiAgentEngine.execute(response.action, this);
-        }
-      }, 300);
-    };
-
-    sendBtn?.addEventListener('click', () => submitUserQuery(chatInput.value));
-
-    chatInput?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        submitUserQuery(chatInput.value);
-      }
-    });
-
-    // Chip prompt triggers
-    document.querySelectorAll('.ai-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const prompt = chip.dataset.prompt;
-        submitUserQuery(prompt);
-      });
-    });
-
-    // Delegated click for dynamic action chip buttons in bot responses
-    chatMessages.addEventListener('click', (e) => {
-      const chipBtn = e.target.closest('.ai-chip-btn');
-      if (chipBtn && chipBtn.dataset.query) {
-        submitUserQuery(chipBtn.dataset.query);
-      }
-    });
-  }
-
-  openRequirementDrawer(storeId) {
-    const drawer = document.getElementById('requirement-drawer');
+  openCreateDeliveryRunModal() {
     const backdrop = document.getElementById('modal-backdrop');
-    drawer.innerHTML = requirementEntryView.renderDrawerContent(storeId, this.currentDate);
-    drawer.classList.add('open');
-    backdrop.classList.add('open');
-
-    requirementEntryView.bindEvents(storeId, this.currentDate, () => {
-      this.renderCurrentView();
-    });
-  }
-
-  openRecordPaymentModal(invoiceId) {
-    const backdrop = document.getElementById('modal-backdrop');
-    backdrop.innerHTML = paymentsView.renderRecordPaymentModal(invoiceId);
+    if (!backdrop) return;
+    backdrop.innerHTML = adminDeliveryRunView.renderCreateModal(this.currentDate);
     backdrop.classList.add('open');
   }
 
@@ -546,13 +488,9 @@ class AppController {
     try {
       await storesRepository.delete(storeId);
       await dataStore.syncAllFromSupabase();
-      if (this.currentView === 'storeDetail' && this.selectedStoreId === storeId) {
-        this.currentView = 'stores';
-        this.selectedStoreId = null;
-      }
       this.renderCurrentView();
-    } catch (err) {
-      alert(`⚠️ Delete Store Failed: ${err.message}`);
+    } catch(err) {
+      alert(`⚠️ Delete Failed: ${err.message}`);
     }
   }
 
@@ -561,8 +499,8 @@ class AppController {
       await productsRepository.delete(productId);
       await dataStore.syncAllFromSupabase();
       this.renderCurrentView();
-    } catch (err) {
-      alert(`⚠️ Delete Product Failed: ${err.message}`);
+    } catch(err) {
+      alert(`⚠️ Delete Failed: ${err.message}`);
     }
   }
 
@@ -571,118 +509,328 @@ class AppController {
       await invoicesRepository.delete(invoiceId);
       await dataStore.syncAllFromSupabase();
       this.renderCurrentView();
-    } catch (err) {
-      alert(`⚠️ Delete Invoice Failed: ${err.message}`);
+    } catch(err) {
+      alert(`⚠️ Delete Failed: ${err.message}`);
     }
   }
 
+  openRequirementDrawer(storeId) {
+    const drawer = document.getElementById('requirement-drawer');
+    const store = storesRepository.getById(storeId);
+    if (!drawer || !store) return;
+
+    const currentReq = requirementsRepository.getByStoreAndDate(storeId, this.currentDate);
+    drawer.innerHTML = requirementEntryView.renderDrawer(store, currentReq, this.currentDate);
+    drawer.classList.add('open');
+    requirementEntryView.bindDrawerEvents(storeId, this.currentDate, async () => {
+      this.closeRequirementDrawer();
+      await dataStore.syncAllFromSupabase();
+      this.renderCurrentView();
+    });
+  }
+
+  closeRequirementDrawer() {
+    const drawer = document.getElementById('requirement-drawer');
+    if (drawer) drawer.classList.remove('open');
+  }
+
   openAddStoreModal(storeId = null) {
+    const backdrop = document.getElementById('modal-backdrop');
+    if (!backdrop) return;
     const store = storeId ? storesRepository.getById(storeId) : null;
     const isEdit = !!store;
-    const backdrop = document.getElementById('modal-backdrop');
+
     backdrop.innerHTML = `
-      <div class="modal-card">
-        <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:1rem;">${isEdit ? 'Edit Retail Store' : 'Add New Retail Store'}</h3>
-        <form id="add-store-form">
-          <input type="hidden" name="storeId" value="${isEdit ? store.id : ''}" />
-          <input type="hidden" name="code" value="${isEdit ? store.code : ''}" />
+      <div class="modal-card" style="max-width: 600px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-color);">
+          <h3 style="font-size:1.2rem; font-weight:800; margin:0;">${isEdit ? '✏️ Edit Store & Geolocation Details' : '➕ Register New Retail Store'}</h3>
+          <button id="btn-cancel-modal" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem;">✕</button>
+        </div>
+        <form id="form-add-store">
+          <input type="hidden" name="storeId" value="${isEdit ? store.id : ''}">
+          <div class="form-group">
+            <label class="form-label">Store Code</label>
+            <input type="text" name="code" class="form-input" required value="${isEdit ? store.code : 'STR-' + Math.floor(100 + Math.random() * 900)}" />
+          </div>
           <div class="form-group">
             <label class="form-label">Store Name</label>
-            <input type="text" name="name" class="form-input" required value="${isEdit ? store.name : ''}" placeholder="e.g. Fresh Dairy Express" />
+            <input type="text" name="name" class="form-input" required placeholder="e.g. Kovai Milk Point" value="${isEdit ? store.name : ''}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Location / City</label>
-            <select name="location" class="form-select" required>
-              <option value="Coimbatore" ${isEdit && store.location === 'Coimbatore' ? 'selected' : ''}>Coimbatore</option>
-              <option value="Pollachi" ${isEdit && store.location === 'Pollachi' ? 'selected' : ''}>Pollachi</option>
-              <option value="Tiruppur" ${isEdit && store.location === 'Tiruppur' ? 'selected' : ''}>Tiruppur</option>
-              <option value="Erode" ${isEdit && store.location === 'Erode' ? 'selected' : ''}>Erode</option>
-            </select>
+            <label class="form-label">Location / Route Area</label>
+            <input type="text" name="location" class="form-input" required placeholder="e.g. Gandhipuram" value="${isEdit ? store.location : ''}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Contact Person</label>
-            <input type="text" name="contactPerson" class="form-input" required value="${isEdit ? store.contactPerson : ''}" placeholder="Contact name" />
+            <label class="form-label">Street Address</label>
+            <input type="text" name="address" class="form-input" placeholder="e.g. 142 Crosscut Road, Gandhipuram" value="${isEdit ? (store.address || '') : ''}" />
           </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Latitude Coordinates</label>
+              <input type="number" step="any" name="latitude" class="form-input" placeholder="e.g. 11.0168" value="${isEdit && store.latitude ? store.latitude : ''}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Longitude Coordinates</label>
+              <input type="number" step="any" name="longitude" class="form-input" placeholder="e.g. 76.9558" value="${isEdit && store.longitude ? store.longitude : ''}" />
+            </div>
+          </div>
+
           <div class="form-group">
-            <label class="form-label">Phone Number</label>
-            <input type="text" name="phone" class="form-input" required value="${isEdit ? store.phone : ''}" placeholder="+91 98421 00000" />
+            <label class="form-label">Optional Google Maps URL</label>
+            <input type="url" name="googleMapsUrl" class="form-input" placeholder="https://maps.google.com/..." value="${isEdit ? (store.googleMapsUrl || '') : ''}" />
           </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Contact Person</label>
+              <input type="text" name="contactPerson" class="form-input" placeholder="e.g. Rajesh Kumar" value="${isEdit ? (store.contactPerson || '') : ''}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input type="tel" name="phone" class="form-input" placeholder="e.g. +91 98765 43210" value="${isEdit ? (store.phone || '') : ''}" />
+            </div>
+          </div>
+
           <div class="form-group">
-            <label class="form-label">Store Address</label>
-            <input type="text" name="address" class="form-input" required value="${isEdit ? store.address : ''}" placeholder="Street address, landmark" />
+            <label class="form-label">Driver Delivery Note / Special Access Instructions</label>
+            <input type="text" name="driverNotes" class="form-input" placeholder="e.g. Deliver via side entrance behind main gate" value="${isEdit ? (store.driverNotes || '') : ''}" />
           </div>
+
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-            <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">${isEdit ? 'Update Store' : 'Save Store'}</button>
+            <button type="button" id="btn-cancel-modal" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Save Store'}</button>
           </div>
         </form>
       </div>
     `;
     backdrop.classList.add('open');
+
+    const form = document.getElementById('form-add-store');
+    if (form) {
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const sId = formData.get('storeId');
+
+        const storeData = {
+          code: formData.get('code'),
+          name: formData.get('name'),
+          location: formData.get('location'),
+          address: formData.get('address'),
+          latitude: formData.get('latitude') ? Number(formData.get('latitude')) : null,
+          longitude: formData.get('longitude') ? Number(formData.get('longitude')) : null,
+          googleMapsUrl: formData.get('googleMapsUrl'),
+          contactPerson: formData.get('contactPerson'),
+          phone: formData.get('phone'),
+          driverNotes: formData.get('driverNotes')
+        };
+
+        try {
+          if (sId) {
+            storeData.id = sId;
+          }
+          await storesRepository.save(storeData);
+          this.closeModal();
+          await dataStore.syncAllFromSupabase();
+          this.renderCurrentView();
+        } catch (err) {
+          alert(`⚠️ Cloud Save Failed: ${err.message}`);
+        }
+      };
+    }
   }
 
   openAddProductModal(productId = null) {
+    const backdrop = document.getElementById('modal-backdrop');
+    if (!backdrop) return;
     const product = productId ? productsRepository.getById(productId) : null;
     const isEdit = !!product;
-    const backdrop = document.getElementById('modal-backdrop');
+
     backdrop.innerHTML = `
-      <div class="modal-card">
-        <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:1rem;">${isEdit ? 'Edit Dairy Product' : 'Add New Dairy Product'}</h3>
-        <form id="add-product-form">
-          <input type="hidden" name="productId" value="${isEdit ? product.id : ''}" />
-          <input type="hidden" name="sku" value="${isEdit ? product.sku : ''}" />
+      <div class="modal-card" style="max-width: 550px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-color);">
+          <h3 style="font-size:1.2rem; font-weight:800; margin:0;">${isEdit ? '✏️ Edit Product' : '➕ Add Catalog Product'}</h3>
+          <button id="btn-cancel-modal" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem;">✕</button>
+        </div>
+        <form id="form-add-product">
+          <input type="hidden" name="productId" value="${isEdit ? product.id : ''}">
+          <div class="form-group">
+            <label class="form-label">SKU Code</label>
+            <input type="text" name="sku" class="form-input" required value="${isEdit ? product.sku : 'SKU-' + Math.floor(100 + Math.random() * 900)}" />
+          </div>
           <div class="form-group">
             <label class="form-label">Product Name</label>
-            <input type="text" name="name" class="form-input" required value="${isEdit ? product.name : ''}" placeholder="e.g. Fresh Buffalo Curd" />
+            <input type="text" name="name" class="form-input" required placeholder="e.g. Full Cream Milk 500ml" value="${isEdit ? product.name : ''}" />
           </div>
-          <div class="form-group">
-            <label class="form-label">Category</label>
-            <select name="category" class="form-select">
-              <option value="Milk" ${isEdit && product.category === 'Milk' ? 'selected' : ''}>Milk</option>
-              <option value="Curd" ${isEdit && product.category === 'Curd' ? 'selected' : ''}>Curd</option>
-              <option value="Paneer" ${isEdit && product.category === 'Paneer' ? 'selected' : ''}>Paneer</option>
-              <option value="Cheese" ${isEdit && product.category === 'Cheese' ? 'selected' : ''}>Cheese</option>
-              <option value="Beverages" ${isEdit && product.category === 'Beverages' ? 'selected' : ''}>Beverages</option>
-              <option value="Ghee" ${isEdit && product.category === 'Ghee' ? 'selected' : ''}>Ghee</option>
-              <option value="Cream" ${isEdit && product.category === 'Cream' ? 'selected' : ''}>Cream</option>
-            </select>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <input type="text" name="category" class="form-input" required placeholder="e.g. Milk" value="${isEdit ? product.category : 'Milk'}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Unit</label>
+              <input type="text" name="unit" class="form-input" required placeholder="e.g. Pkt" value="${isEdit ? product.unit : 'Pkt'}" />
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Unit</label>
-            <select name="unit" class="form-select">
-              <option value="Litre" ${isEdit && product.unit === 'Litre' ? 'selected' : ''}>Litre</option>
-              <option value="Kilogram" ${isEdit && product.unit === 'Kilogram' ? 'selected' : ''}>Kilogram</option>
-              <option value="Packet" ${isEdit && product.unit === 'Packet' ? 'selected' : ''}>Packet</option>
-              <option value="Box" ${isEdit && product.unit === 'Box' ? 'selected' : ''}>Box</option>
-              <option value="Piece" ${isEdit && product.unit === 'Piece' ? 'selected' : ''}>Piece</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Selling Price (₹)</label>
-            <input type="number" name="sellingPrice" class="form-input" required min="1" step="0.5" value="${isEdit ? product.sellingPrice : ''}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Purchase Cost Price (₹)</label>
-            <input type="number" name="purchasePrice" class="form-input" required min="1" step="0.5" value="${isEdit ? product.purchasePrice : ''}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tax (GST %)</label>
-            <input type="number" name="taxPercent" class="form-input" value="${isEdit ? product.taxPercent : 0}" min="0" max="28" />
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label class="form-label">Selling Price (₹)</label>
+              <input type="number" step="0.5" name="sellingPrice" class="form-input" required value="${isEdit ? product.sellingPrice : 30}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Purchase Price (₹)</label>
+              <input type="number" step="0.5" name="purchasePrice" class="form-input" required value="${isEdit ? product.purchasePrice : 24}" />
+            </div>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-            <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">${isEdit ? 'Update Product' : 'Save Product'}</button>
+            <button type="button" id="btn-cancel-modal" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Save Product'}</button>
           </div>
         </form>
       </div>
     `;
     backdrop.classList.add('open');
+
+    const form = document.getElementById('form-add-product');
+    if (form) {
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const pId = formData.get('productId');
+
+        const productData = {
+          sku: formData.get('sku'),
+          name: formData.get('name'),
+          category: formData.get('category'),
+          unit: formData.get('unit'),
+          sellingPrice: parseFloat(formData.get('sellingPrice')),
+          purchasePrice: parseFloat(formData.get('purchasePrice'))
+        };
+
+        try {
+          if (pId) {
+            productData.id = pId;
+          }
+          await productsRepository.save(productData);
+          this.closeModal();
+          await dataStore.syncAllFromSupabase();
+          this.renderCurrentView();
+        } catch (err) {
+          alert(`⚠️ Cloud Save Failed: ${err.message}`);
+        }
+      };
+    }
+  }
+
+  openRecordPaymentModal(invoiceId) {
+    const backdrop = document.getElementById('modal-backdrop');
+    if (!backdrop) return;
+
+    const invoices = invoicesRepository.getAll();
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    backdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 500px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-color);">
+          <h3 style="font-size:1.2rem; font-weight:800; margin:0;">💳 Record Payment Collection</h3>
+          <button id="btn-cancel-modal" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem;">✕</button>
+        </div>
+        
+        <form id="form-record-payment">
+          <input type="hidden" name="invoiceId" value="${invoice.id}">
+          <input type="hidden" name="storeId" value="${invoice.storeId}">
+          <input type="hidden" name="storeName" value="${invoice.storeName}">
+
+          <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:0.85rem; border-radius:var(--radius-md); margin-bottom:1.25rem;">
+            <div style="font-size:0.8rem; color:var(--text-muted);">Invoice: <strong>${invoice.invoiceNumber}</strong></div>
+            <div style="font-weight:700; color:var(--text-main);">${invoice.storeName}</div>
+            <div style="display:flex; justify-content:space-between; margin-top:0.4rem; font-size:0.85rem;">
+              <span>Total Bill: ₹${invoice.grandTotal}</span>
+              <span style="color:#DC2626; font-weight:700;">Outstanding: ₹${invoice.outstandingAmount}</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Payment Date</label>
+            <input type="date" name="date" class="form-input" required value="${this.currentDate}" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Amount Collected (₹)</label>
+            <input type="number" step="0.5" name="amount" class="form-input" required max="${invoice.outstandingAmount}" value="${invoice.outstandingAmount}" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Payment Mode</label>
+            <select name="mode" class="form-select">
+              <option value="UPI">UPI / GPay / PhonePe</option>
+              <option value="Cash">Cash</option>
+              <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Reference No. / UTR (Optional)</label>
+            <input type="text" name="referenceNo" class="form-input" placeholder="e.g. UPI/3289192019" />
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+            <button type="button" id="btn-cancel-modal" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit Payment</button>
+          </div>
+        </form>
+      </div>
+    `;
+    backdrop.classList.add('open');
+
+    const form = document.getElementById('form-record-payment');
+    if (form) {
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+
+        const paymentData = {
+          invoiceId: formData.get('invoiceId'),
+          storeId: formData.get('storeId'),
+          storeName: formData.get('storeName'),
+          amount: parseFloat(formData.get('amount')),
+          date: formData.get('date'),
+          mode: formData.get('mode'),
+          referenceNo: formData.get('referenceNo')
+        };
+
+        try {
+          await paymentsRepository.recordPayment(paymentData);
+          this.closeModal();
+          await dataStore.syncAllFromSupabase();
+          this.renderCurrentView();
+        } catch (err) {
+          alert(`⚠️ Payment Save Failed: ${err.message}`);
+        }
+      };
+    }
+  }
+
+  async autoFillAllPendingStores() {
+    try {
+      const summary = await workflowEngine.confirmAllRequirementsForDate(this.currentDate);
+      await dataStore.syncAllFromSupabase();
+      this.renderCurrentView();
+      alert(`✅ Success: Updated ${summary.count} store requirements for ${this.currentDate}`);
+    } catch(err) {
+      alert(`⚠️ Auto-fill Failed: ${err.message}`);
+    }
   }
 
   closeModal() {
     const backdrop = document.getElementById('modal-backdrop');
-    backdrop.classList.remove('open');
-    backdrop.innerHTML = '';
+    if (backdrop) {
+      backdrop.classList.remove('open');
+      backdrop.innerHTML = '';
+    }
   }
 
   bindRequirementsEvents() {
@@ -692,8 +840,10 @@ class AppController {
     if (locFilter && statFilter) {
       const updateReqs = () => {
         const viewport = document.getElementById('app-viewport');
-        viewport.innerHTML = requirementsView.render(this.currentDate, statFilter.value, locFilter.value);
-        this.bindRequirementsEvents();
+        if (viewport) {
+          viewport.innerHTML = requirementsView.render(this.currentDate, statFilter.value, locFilter.value);
+          this.bindRequirementsEvents();
+        }
       };
       locFilter.addEventListener('change', updateReqs);
       statFilter.addEventListener('change', updateReqs);
@@ -707,6 +857,78 @@ class AppController {
         window.location.reload();
       }
     });
+
+    document.getElementById('btn-export-backup-json')?.addEventListener('click', () => {
+      exportService.downloadFullBackupJson();
+    });
+
+    document.getElementById('btn-export-stores-csv')?.addEventListener('click', () => {
+      exportService.downloadStoresCsv();
+    });
+
+    document.getElementById('btn-export-products-csv')?.addEventListener('click', () => {
+      exportService.downloadProductsCsv();
+    });
+
+    document.getElementById('btn-export-invoices-csv')?.addEventListener('click', () => {
+      exportService.downloadInvoicesCsv();
+    });
+
+    document.getElementById('btn-export-payments-csv')?.addEventListener('click', () => {
+      exportService.downloadPaymentsCsv();
+    });
+  }
+
+  bindAICopilot() {
+    const btnToggle = document.getElementById('btn-toggle-ai-chat');
+    const chatWindow = document.getElementById('ai-chat-window');
+    const btnClose = document.getElementById('btn-close-ai-chat');
+    const btnSend = document.getElementById('ai-send-btn');
+    const input = document.getElementById('ai-input-field');
+
+    if (btnToggle && chatWindow) {
+      btnToggle.onclick = () => {
+        const isHidden = chatWindow.style.display === 'none' || chatWindow.style.display === '';
+        chatWindow.style.display = isHidden ? 'flex' : 'none';
+        if (isHidden) input?.focus();
+      };
+    }
+
+    if (btnClose && chatWindow) {
+      btnClose.onclick = () => {
+        chatWindow.style.display = 'none';
+      };
+    }
+
+    const handleSend = async () => {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      aiCopilotService.appendMessage('user', text);
+      const thinkingId = aiCopilotService.appendThinkingMessage();
+
+      try {
+        const result = await aiAgentEngine.executeUserInstruction(text, this.currentDate);
+        aiCopilotService.removeMessage(thinkingId);
+        aiCopilotService.appendMessage('assistant', result.response);
+
+        if (result.requiresUIRefresh) {
+          await dataStore.syncAllFromSupabase();
+          this.renderCurrentView();
+        }
+      } catch (err) {
+        aiCopilotService.removeMessage(thinkingId);
+        aiCopilotService.appendMessage('assistant', `⚠️ Sorry, I encountered an error executing your request: ${err.message}`);
+      }
+    };
+
+    if (btnSend) btnSend.onclick = handleSend;
+    if (input) {
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') handleSend();
+      };
+    }
   }
 }
 
@@ -787,24 +1009,60 @@ async function updateUIForSession(session) {
   const authContainer = document.getElementById('auth-container');
   const appRoot = document.getElementById('app-root');
   const userEmailDisplay = document.getElementById('user-email-display');
+  const userRoleDisplay = document.getElementById('user-role-display');
   const userAvatarBadge = document.getElementById('user-avatar-badge');
 
   if (session && session.user) {
     if (authContainer) authContainer.style.display = 'none';
     if (appRoot) appRoot.style.display = 'flex';
 
-    const userEmail = session.user.email || 'Admin';
+    const userEmail = session.user.email || 'User';
     if (userEmailDisplay) userEmailDisplay.textContent = userEmail;
     if (userAvatarBadge) userAvatarBadge.textContent = userEmail.substring(0, 2).toUpperCase();
 
-    // Fetch user-owned data from Supabase
+    // Check user role from Supabase user_roles
+    const role = await userRolesRepository.getRole(session.user);
+    window.currentUserRole = role;
+
+    // Fetch role-specific dataset from Supabase
     await dataStore.syncAllFromSupabase();
+
+    if (userRoleDisplay) {
+      if (role === 'admin') {
+        userRoleDisplay.textContent = '👑 Admin / Business Owner';
+        userRoleDisplay.style.color = '#10B981';
+      } else if (role === 'driver') {
+        userRoleDisplay.textContent = '🚛 Driver (Field Portal)';
+        userRoleDisplay.style.color = '#60A5FA';
+      } else {
+        userRoleDisplay.textContent = '🔒 Role Pending';
+        userRoleDisplay.style.color = '#F59E0B';
+      }
+    }
+
+    // Toggle navigation buttons based on role
+    const navLinks = document.querySelectorAll('#sidebar .nav-link, .mobile-nav-btn');
+    navLinks.forEach(link => {
+      const view = link.getAttribute('data-view');
+      if (role === 'driver') {
+        link.style.display = (view === 'driver-dashboard') ? 'flex' : 'none';
+      } else if (role === 'admin') {
+        link.style.display = (view === 'driver-dashboard') ? 'none' : 'flex';
+      } else {
+        link.style.display = 'none';
+      }
+    });
+
+    const aiWidget = document.getElementById('ai-assistant-widget');
+    if (aiWidget) {
+      aiWidget.style.display = role === 'admin' ? 'block' : 'none';
+    }
 
     if (!window.app) {
       window.app = new AppController();
-    } else {
-      window.app.renderCurrentView();
     }
+    window.app.userRole = role;
+    window.app.handleNavigation();
   } else {
     if (appRoot) appRoot.style.display = 'none';
     if (authContainer) authContainer.style.display = 'flex';
@@ -826,4 +1084,3 @@ if (document.readyState === 'loading') {
 } else {
   initAuthApp();
 }
-
