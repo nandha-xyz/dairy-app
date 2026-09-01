@@ -1,5 +1,5 @@
 import { workflowEngine } from '../services/workflowEngine.js';
-import { requirementsRepository, productsRepository, storesRepository } from '../repositories/index.js';
+import { requirementsRepository, productsRepository, storesRepository, dataStore } from '../repositories/index.js';
 
 export const requirementEntryView = {
   renderDrawerContent: (storeId, dateStr) => {
@@ -346,7 +346,7 @@ export const requirementEntryView = {
     });
 
     // Save Draft
-    document.getElementById('btn-save-draft')?.addEventListener('click', () => {
+    document.getElementById('btn-save-draft')?.addEventListener('click', async () => {
       const items = [];
       tableBody.querySelectorAll('.req-qty-input').forEach(input => {
         const productId = input.dataset.productId;
@@ -376,14 +376,20 @@ export const requirementEntryView = {
         totalAmount: items.reduce((s, i) => s + i.amount, 0),
         lastUpdated: 'Just now (Draft)'
       };
-      requirementsRepository.save(req);
-      document.getElementById('requirement-drawer').classList.remove('open');
-      document.getElementById('modal-backdrop').classList.remove('open');
-      if (onComplete) onComplete();
+
+      try {
+        await requirementsRepository.save(req);
+        await dataStore.syncAllFromSupabase();
+        document.getElementById('requirement-drawer').classList.remove('open');
+        document.getElementById('modal-backdrop').classList.remove('open');
+        if (onComplete) onComplete();
+      } catch (err) {
+        alert(`⚠️ Supabase Save Failed: ${err.message}`);
+      }
     });
 
     // Confirm Requirement
-    document.getElementById('btn-confirm-req')?.addEventListener('click', () => {
+    document.getElementById('btn-confirm-req')?.addEventListener('click', async () => {
       if (confirm(`Confirm today's requirement for ${storesRepository.getById(storeId).name}?\nThis will generate the store invoice and update consolidated purchase orders.`)) {
         const items = [];
         tableBody.querySelectorAll('.req-qty-input').forEach(input => {
@@ -414,20 +420,26 @@ export const requirementEntryView = {
           totalAmount: items.reduce((s, i) => s + i.amount, 0),
           lastUpdated: 'Today, Confirmed'
         };
-        requirementsRepository.save(req);
 
-        // Also update store default recurring requirements
-        if (!store.recurringRequirements) store.recurringRequirements = {};
-        items.forEach(i => {
-          if (i.quantity > 0) {
-            store.recurringRequirements[i.productId] = i.quantity;
-          }
-        });
-        storesRepository.save(store);
+        try {
+          await requirementsRepository.save(req);
 
-        document.getElementById('requirement-drawer').classList.remove('open');
-        document.getElementById('modal-backdrop').classList.remove('open');
-        if (onComplete) onComplete();
+          // Also update store default recurring requirements
+          if (!store.recurringRequirements) store.recurringRequirements = {};
+          items.forEach(i => {
+            if (i.quantity > 0) {
+              store.recurringRequirements[i.productId] = i.quantity;
+            }
+          });
+          await storesRepository.save(store);
+          await dataStore.syncAllFromSupabase();
+
+          document.getElementById('requirement-drawer').classList.remove('open');
+          document.getElementById('modal-backdrop').classList.remove('open');
+          if (onComplete) onComplete();
+        } catch (err) {
+          alert(`⚠️ Supabase Save Failed: ${err.message}`);
+        }
       }
     });
   }

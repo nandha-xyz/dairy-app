@@ -1,5 +1,5 @@
 import { workflowEngine } from '../services/workflowEngine.js';
-import { storesRepository, requirementsRepository, invoicesRepository } from '../repositories/index.js';
+import { storesRepository, productsRepository, requirementsRepository, invoicesRepository, paymentsRepository } from '../repositories/index.js';
 
 export const dashboardView = {
   render: (currentDateStr) => {
@@ -10,6 +10,70 @@ export const dashboardView = {
 
     const pendingStoresList = storeStatuses.filter(s => s.requirement.status === 'Pending');
     const progressPercent = Math.round((kpis.requirementsCollected / kpis.totalStoresCount) * 100) || 0;
+
+    // Collect real user activity from Supabase repositories
+    const activities = [];
+
+    const stores = storesRepository.getAll();
+    const products = productsRepository.getAll();
+    const requirements = requirementsRepository.getAll();
+    const allInvoices = invoicesRepository.getAll();
+    const payments = paymentsRepository.getAll();
+
+    stores.forEach(s => {
+      activities.push({
+        title: 'Store Registered',
+        desc: `${s.name} (${s.code}) in ${s.location}.`,
+        time: 'Store Record',
+        iconBg: '#DBEAFE',
+        iconColor: '#1E40AF',
+        iconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>`
+      });
+    });
+
+    products.forEach(p => {
+      activities.push({
+        title: 'Product Added',
+        desc: `${p.name} (${p.sku}) added at ₹${p.sellingPrice}.`,
+        time: 'Catalog Item',
+        iconBg: '#F3E8FF',
+        iconColor: '#7C3AED',
+        iconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`
+      });
+    });
+
+    requirements.forEach(r => {
+      activities.push({
+        title: `Store Requirement ${r.status}`,
+        desc: `${r.storeName} requirement of ${r.items.length} items (${workflowEngine.formatCurrency(r.totalAmount)}).`,
+        time: r.date,
+        iconBg: '#D1FAE5',
+        iconColor: '#059669',
+        iconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+      });
+    });
+
+    allInvoices.forEach(inv => {
+      activities.push({
+        title: `Invoice ${inv.invoiceNumber} Generated`,
+        desc: `Invoice of ${workflowEngine.formatCurrency(inv.grandTotal)} generated for ${inv.storeName}.`,
+        time: inv.date,
+        iconBg: '#EFF6FF',
+        iconColor: '#2563EB',
+        iconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>`
+      });
+    });
+
+    payments.forEach(pay => {
+      activities.push({
+        title: 'Payment Received',
+        desc: `${workflowEngine.formatCurrency(pay.amount)} received via ${pay.mode} from ${pay.storeName}.`,
+        time: pay.date,
+        iconBg: '#FEF3C7',
+        iconColor: '#92400E',
+        iconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`
+      });
+    });
 
     return `
       <!-- Header Greeting & Date -->
@@ -143,7 +207,7 @@ export const dashboardView = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${consolidated.map(item => `
+                  ${consolidated.length > 0 ? consolidated.map(item => `
                     <tr>
                       <td style="font-weight: 600;">${item.product.name}</td>
                       <td><span class="badge badge-draft">${item.product.category}</span></td>
@@ -152,7 +216,15 @@ export const dashboardView = {
                       <td style="text-align:right;">₹${item.purchasePrice}</td>
                       <td style="text-align:right; font-weight: 600;">${workflowEngine.formatCurrency(item.estimatedCost)}</td>
                     </tr>
-                  `).join('')}
+                  `).join('') : `
+                    <tr>
+                      <td colspan="6">
+                        <div class="empty-state" style="padding:1.5rem;">
+                          No products or requirements confirmed for today.
+                        </div>
+                      </td>
+                    </tr>
+                  `}
                 </tbody>
               </table>
             </div>
@@ -179,7 +251,7 @@ export const dashboardView = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${storeStatuses.slice(0, 8).map(s => `
+                  ${storeStatuses.length > 0 ? storeStatuses.slice(0, 8).map(s => `
                     <tr>
                       <td>
                         <div style="font-weight:600;">${s.store.name}</div>
@@ -196,7 +268,15 @@ export const dashboardView = {
                         </button>
                       </td>
                     </tr>
-                  `).join('')}
+                  `).join('') : `
+                    <tr>
+                      <td colspan="5">
+                        <div class="empty-state" style="padding:1.5rem;">
+                          No stores registered yet. Go to Stores tab to add your first store.
+                        </div>
+                      </td>
+                    </tr>
+                  `}
                 </tbody>
               </table>
             </div>
@@ -212,49 +292,24 @@ export const dashboardView = {
             </div>
             
             <div class="activity-list">
-              <div class="activity-item">
-                <div class="activity-icon" style="background:#D1FAE5; color:#059669;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              ${activities.length > 0 ? activities.slice(0, 8).map(act => `
+                <div class="activity-item">
+                  <div class="activity-icon" style="background:${act.iconBg}; color:${act.iconColor};">
+                    ${act.iconSvg}
+                  </div>
+                  <div class="activity-content">
+                    <div class="activity-title">${act.title}</div>
+                    <div style="color:var(--text-secondary);">${act.desc}</div>
+                    <div class="activity-time">${act.time}</div>
+                  </div>
                 </div>
-                <div class="activity-content">
-                  <div class="activity-title">Store Requirement Confirmed</div>
-                  <div style="color:var(--text-secondary);">Kovai Fresh Dairy confirmed 45L Milk & 12Kg Curd.</div>
-                  <div class="activity-time">10 mins ago</div>
+              `).join('') : `
+                <div class="empty-state" style="padding: 2rem 1rem; text-align: center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px; height:32px; color:var(--text-muted); margin-bottom:0.5rem;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  <h4 style="font-weight:700; color:var(--text-secondary); margin-bottom:0.25rem;">No activity yet.</h4>
+                  <p style="font-size:0.8rem; color:var(--text-muted);">Add stores, products, or record daily requirements to see real-time updates here.</p>
                 </div>
-              </div>
-
-              <div class="activity-item">
-                <div class="activity-icon" style="background:#DBEAFE; color:#1E40AF;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-title">Invoice INV-2026-012 Generated</div>
-                  <div style="color:var(--text-secondary);">Invoice of ₹4,850 generated for Annapoorna Bakers.</div>
-                  <div class="activity-time">25 mins ago</div>
-                </div>
-              </div>
-
-              <div class="activity-item">
-                <div class="activity-icon" style="background:#FEF3C7; color:#92400E;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-title">Payment Received</div>
-                  <div style="color:var(--text-secondary);">₹12,400 received via UPI from Race Course Organics.</div>
-                  <div class="activity-time">1 hour ago</div>
-                </div>
-              </div>
-
-              <div class="activity-item">
-                <div class="activity-icon" style="background:#F3E8FF; color:#7C3AED;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                </div>
-                <div class="activity-content">
-                  <div class="activity-title">Purchase Order Updated</div>
-                  <div style="color:var(--text-secondary);">Consolidated milk order quantity adjusted to 450 L.</div>
-                  <div class="activity-time">2 hours ago</div>
-                </div>
-              </div>
+              `}
             </div>
           </div>
         </div>

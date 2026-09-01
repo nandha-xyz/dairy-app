@@ -212,13 +212,13 @@ class DataStore {
     if (!supabase) return;
     try {
       const [
-        { data: storesData },
-        { data: productsData },
-        { data: reqsData },
-        { data: invsData },
-        { data: paysData },
-        { data: posData },
-        { data: buffersData }
+        { data: storesData, error: e1 },
+        { data: productsData, error: e2 },
+        { data: reqsData, error: e3 },
+        { data: invsData, error: e4 },
+        { data: paysData, error: e5 },
+        { data: posData, error: e6 },
+        { data: buffersData, error: e7 }
       ] = await Promise.all([
         supabase.from('stores').select('*'),
         supabase.from('products').select('*'),
@@ -229,40 +229,23 @@ class DataStore {
         supabase.from('po_buffers').select('*')
       ]);
 
-      if (storesData) {
-        const stores = storesData.map(Mappers.storeFromDb);
-        this.set(STORAGE_KEYS.STORES, stores);
+      if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
+        console.warn('Supabase sync warning:', e1 || e2 || e3 || e4 || e5 || e6 || e7);
       }
-      if (productsData) {
-        const products = productsData.map(Mappers.productFromDb);
-        this.set(STORAGE_KEYS.PRODUCTS, products);
-      }
-      if (reqsData) {
-        const reqs = reqsData.map(Mappers.requirementFromDb);
-        this.set(STORAGE_KEYS.REQUIREMENTS, reqs);
-      }
-      if (invsData) {
-        const invs = invsData.map(Mappers.invoiceFromDb);
-        this.set(STORAGE_KEYS.INVOICES, invs);
-      }
-      if (paysData) {
-        const pays = paysData.map(Mappers.paymentFromDb);
-        this.set(STORAGE_KEYS.PAYMENTS, pays);
-      }
-      if (posData) {
-        const posMap = {};
-        posData.forEach(r => {
-          posMap[r.date] = Mappers.poFromDb(r);
-        });
-        safeStorage.setItem(STORAGE_KEYS.POS, JSON.stringify(posMap));
-      }
-      if (buffersData) {
-        const bufMap = {};
-        buffersData.forEach(b => {
-          bufMap[b.buffer_key] = Number(b.buffer_qty);
-        });
-        safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify(bufMap));
-      }
+
+      this.set(STORAGE_KEYS.STORES, (storesData || []).map(Mappers.storeFromDb));
+      this.set(STORAGE_KEYS.PRODUCTS, (productsData || []).map(Mappers.productFromDb));
+      this.set(STORAGE_KEYS.REQUIREMENTS, (reqsData || []).map(Mappers.requirementFromDb));
+      this.set(STORAGE_KEYS.INVOICES, (invsData || []).map(Mappers.invoiceFromDb));
+      this.set(STORAGE_KEYS.PAYMENTS, (paysData || []).map(Mappers.paymentFromDb));
+
+      const posMap = {};
+      (posData || []).forEach(r => { posMap[r.date] = Mappers.poFromDb(r); });
+      safeStorage.setItem(STORAGE_KEYS.POS, JSON.stringify(posMap));
+
+      const bufMap = {};
+      (buffersData || []).forEach(b => { bufMap[b.buffer_key] = Number(b.buffer_qty); });
+      safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify(bufMap));
 
       this.isSynced = true;
     } catch (err) {
@@ -279,19 +262,21 @@ export const dataStore = db;
 export const storesRepository = {
   getAll: () => db.get(STORAGE_KEYS.STORES),
   getById: (id) => db.get(STORAGE_KEYS.STORES).find(s => s.id === id),
-  save: (store) => {
-    const stores = db.get(STORAGE_KEYS.STORES);
+  save: async (store) => {
     if (!store.id) store.id = `store-${Date.now()}`;
+
+    if (supabase) {
+      const { error } = await supabase.from('stores').upsert(Mappers.storeToDb(store));
+      if (error) {
+        throw new Error(`Cloud save error (Stores): ${error.message}`);
+      }
+    }
+
+    const stores = db.get(STORAGE_KEYS.STORES);
     const idx = stores.findIndex(s => s.id === store.id);
     if (idx >= 0) stores[idx] = store;
     else stores.unshift(store);
     db.set(STORAGE_KEYS.STORES, stores);
-
-    if (supabase) {
-      supabase.from('stores').upsert(Mappers.storeToDb(store)).then(({ error }) => {
-        if (error) console.error('Supabase store save error:', error.message);
-      });
-    }
 
     return store;
   }
@@ -302,19 +287,21 @@ export const productsRepository = {
   getAll: () => db.get(STORAGE_KEYS.PRODUCTS),
   getActive: () => db.get(STORAGE_KEYS.PRODUCTS).filter(p => p.active),
   getById: (id) => db.get(STORAGE_KEYS.PRODUCTS).find(p => p.id === id),
-  save: (product) => {
-    const products = db.get(STORAGE_KEYS.PRODUCTS);
+  save: async (product) => {
     if (!product.id) product.id = `prd-${Date.now()}`;
+
+    if (supabase) {
+      const { error } = await supabase.from('products').upsert(Mappers.productToDb(product));
+      if (error) {
+        throw new Error(`Cloud save error (Products): ${error.message}`);
+      }
+    }
+
+    const products = db.get(STORAGE_KEYS.PRODUCTS);
     const idx = products.findIndex(p => p.id === product.id);
     if (idx >= 0) products[idx] = product;
     else products.unshift(product);
     db.set(STORAGE_KEYS.PRODUCTS, products);
-
-    if (supabase) {
-      supabase.from('products').upsert(Mappers.productToDb(product)).then(({ error }) => {
-        if (error) console.error('Supabase product save error:', error.message);
-      });
-    }
 
     return product;
   }
@@ -326,22 +313,24 @@ export const requirementsRepository = {
   getByDate: (dateStr) => db.get(STORAGE_KEYS.REQUIREMENTS).filter(r => r.date === dateStr),
   getByStoreAndDate: (storeId, dateStr) => db.get(STORAGE_KEYS.REQUIREMENTS).find(r => r.storeId === storeId && r.date === dateStr),
   getByStore: (storeId) => db.get(STORAGE_KEYS.REQUIREMENTS).filter(r => r.storeId === storeId),
-  save: (requirement) => {
-    const requirements = db.get(STORAGE_KEYS.REQUIREMENTS);
+  save: async (requirement) => {
     if (!requirement.id) requirement.id = `req-${requirement.date}-${requirement.storeId}`;
+
+    if (supabase) {
+      const { error } = await supabase.from('daily_requirements').upsert(Mappers.requirementToDb(requirement));
+      if (error) {
+        throw new Error(`Cloud save error (Requirements): ${error.message}`);
+      }
+    }
+
+    const requirements = db.get(STORAGE_KEYS.REQUIREMENTS);
     const idx = requirements.findIndex(r => r.id === requirement.id);
     if (idx >= 0) requirements[idx] = requirement;
     else requirements.unshift(requirement);
     db.set(STORAGE_KEYS.REQUIREMENTS, requirements);
 
-    if (supabase) {
-      supabase.from('daily_requirements').upsert(Mappers.requirementToDb(requirement)).then(({ error }) => {
-        if (error) console.error('Supabase requirement save error:', error.message);
-      });
-    }
-
     if (requirement.status === 'Confirmed') {
-      invoicesRepository.syncInvoiceFromRequirement(requirement);
+      await invoicesRepository.syncInvoiceFromRequirement(requirement);
     }
     return requirement;
   }
@@ -354,7 +343,7 @@ export const invoicesRepository = {
   getByStore: (storeId) => db.get(STORAGE_KEYS.INVOICES).filter(i => i.storeId === storeId),
   getByDate: (dateStr) => db.get(STORAGE_KEYS.INVOICES).filter(i => i.date === dateStr),
   
-  syncInvoiceFromRequirement: (requirement) => {
+  syncInvoiceFromRequirement: async (requirement) => {
     const invoices = db.get(STORAGE_KEYS.INVOICES);
     let inv = invoices.find(i => i.requirementId === requirement.id);
     
@@ -391,29 +380,31 @@ export const invoicesRepository = {
       };
       invoices.unshift(inv);
     }
-    db.set(STORAGE_KEYS.INVOICES, invoices);
 
     if (supabase) {
-      supabase.from('invoices').upsert(Mappers.invoiceToDb(inv)).then(({ error }) => {
-        if (error) console.error('Supabase invoice save error:', error.message);
-      });
+      const { error } = await supabase.from('invoices').upsert(Mappers.invoiceToDb(inv));
+      if (error) {
+        throw new Error(`Cloud save error (Invoices): ${error.message}`);
+      }
     }
 
+    db.set(STORAGE_KEYS.INVOICES, invoices);
     return inv;
   },
 
-  save: (invoice) => {
+  save: async (invoice) => {
+    if (supabase) {
+      const { error } = await supabase.from('invoices').upsert(Mappers.invoiceToDb(invoice));
+      if (error) {
+        throw new Error(`Cloud save error (Invoices): ${error.message}`);
+      }
+    }
+
     const invoices = db.get(STORAGE_KEYS.INVOICES);
     const idx = invoices.findIndex(i => i.id === invoice.id);
     if (idx >= 0) invoices[idx] = invoice;
     else invoices.unshift(invoice);
     db.set(STORAGE_KEYS.INVOICES, invoices);
-
-    if (supabase) {
-      supabase.from('invoices').upsert(Mappers.invoiceToDb(invoice)).then(({ error }) => {
-        if (error) console.error('Supabase invoice save error:', error.message);
-      });
-    }
 
     return invoice;
   }
@@ -425,20 +416,22 @@ export const paymentsRepository = {
   getByStore: (storeId) => db.get(STORAGE_KEYS.PAYMENTS).filter(p => p.storeId === storeId),
   getByInvoice: (invoiceId) => db.get(STORAGE_KEYS.PAYMENTS).filter(p => p.invoiceId === invoiceId),
   
-  recordPayment: (paymentData) => {
-    const payments = db.get(STORAGE_KEYS.PAYMENTS);
+  recordPayment: async (paymentData) => {
     const newPayment = {
       id: `pay-${Date.now()}`,
       ...paymentData
     };
-    payments.unshift(newPayment);
-    db.set(STORAGE_KEYS.PAYMENTS, payments);
 
     if (supabase) {
-      supabase.from('payments').insert(Mappers.paymentToDb(newPayment)).then(({ error }) => {
-        if (error) console.error('Supabase payment save error:', error.message);
-      });
+      const { error } = await supabase.from('payments').insert(Mappers.paymentToDb(newPayment));
+      if (error) {
+        throw new Error(`Cloud save error (Payments): ${error.message}`);
+      }
     }
+
+    const payments = db.get(STORAGE_KEYS.PAYMENTS);
+    payments.unshift(newPayment);
+    db.set(STORAGE_KEYS.PAYMENTS, payments);
 
     // Update corresponding invoice
     const invoice = invoicesRepository.getById(paymentData.invoiceId);
@@ -450,7 +443,7 @@ export const paymentsRepository = {
       } else {
         invoice.status = 'Partially Paid';
       }
-      invoicesRepository.save(invoice);
+      await invoicesRepository.save(invoice);
     }
 
     return newPayment;
@@ -464,19 +457,18 @@ export const ordersRepository = {
       return JSON.parse(safeStorage.getItem(STORAGE_KEYS.PO_BUFFERS) || '{}');
     } catch(e) { return {}; }
   },
-  setPOBuffer: (bufferKey, actualQty) => {
+  setPOBuffer: async (bufferKey, actualQty) => {
+    if (supabase) {
+      const { error } = await supabase.from('po_buffers').upsert({
+        buffer_key: bufferKey,
+        buffer_qty: actualQty
+      }, { onConflict: 'owner_id,buffer_key' });
+      if (error) throw new Error(`Cloud save error (PO Buffer): ${error.message}`);
+    }
+
     const buffers = ordersRepository.getPOBuffers();
     buffers[bufferKey] = actualQty;
     safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify(buffers));
-
-    if (supabase) {
-      supabase.from('po_buffers').upsert({
-        buffer_key: bufferKey,
-        buffer_qty: actualQty
-      }, { onConflict: 'owner_id,buffer_key' }).then(({ error }) => {
-        if (error) console.error('Supabase PO buffer save error:', error.message);
-      });
-    }
   },
   getByDate: (dateStr) => {
     try {
@@ -484,19 +476,18 @@ export const ordersRepository = {
       return pos[dateStr] || null;
     } catch(e) { return null; }
   },
-  savePO: (poRecord) => {
+  savePO: async (poRecord) => {
+    if (supabase) {
+      const { error } = await supabase.from('purchase_orders').upsert(Mappers.poToDb(poRecord));
+      if (error) throw new Error(`Cloud save error (Purchase Orders): ${error.message}`);
+    }
+
     let pos = {};
     try {
       pos = JSON.parse(safeStorage.getItem(STORAGE_KEYS.POS) || '{}');
     } catch(e) {}
     pos[poRecord.date] = poRecord;
     safeStorage.setItem(STORAGE_KEYS.POS, JSON.stringify(pos));
-
-    if (supabase) {
-      supabase.from('purchase_orders').upsert(Mappers.poToDb(poRecord)).then(({ error }) => {
-        if (error) console.error('Supabase PO save error:', error.message);
-      });
-    }
 
     return poRecord;
   }

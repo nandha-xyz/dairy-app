@@ -262,9 +262,13 @@ class AppController {
     });
 
     // Form submission handlers
-    document.addEventListener('submit', (e) => {
+    document.addEventListener('submit', async (e) => {
       if (e.target.id === 'payment-form') {
         e.preventDefault();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving Payment...'; }
+
         const formData = new FormData(e.target);
         const paymentData = {
           invoiceId: formData.get('invoiceId'),
@@ -272,18 +276,28 @@ class AppController {
           storeName: formData.get('storeName'),
           amount: parseFloat(formData.get('amount')) || 0,
           date: formData.get('date'),
-          method: formData.get('method'),
+          mode: formData.get('method'),
           referenceNumber: formData.get('referenceNumber'),
           notes: formData.get('notes')
         };
 
-        paymentsRepository.recordPayment(paymentData);
-        this.closeModal();
-        this.renderCurrentView();
+        try {
+          await paymentsRepository.recordPayment(paymentData);
+          await dataStore.syncAllFromSupabase();
+          this.closeModal();
+          this.renderCurrentView();
+        } catch (err) {
+          alert(`⚠️ Supabase Save Failed: ${err.message}`);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+        }
       }
 
       if (e.target.id === 'add-store-form') {
         e.preventDefault();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving to Cloud...'; }
+
         const formData = new FormData(e.target);
         const newStore = {
           id: `s-${Date.now()}`,
@@ -296,13 +310,24 @@ class AppController {
           address: formData.get('address'),
           recurringRequirements: {}
         };
-        storesRepository.save(newStore);
-        this.closeModal();
-        this.renderCurrentView();
+
+        try {
+          await storesRepository.save(newStore);
+          await dataStore.syncAllFromSupabase();
+          this.closeModal();
+          this.renderCurrentView();
+        } catch (err) {
+          alert(`⚠️ Supabase Save Failed: ${err.message}`);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+        }
       }
 
       if (e.target.id === 'add-product-form') {
         e.preventDefault();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving to Cloud...'; }
+
         const formData = new FormData(e.target);
         const newProd = {
           id: `p-${Date.now()}`,
@@ -315,9 +340,16 @@ class AppController {
           taxPercent: parseFloat(formData.get('taxPercent')) || 0,
           active: true
         };
-        productsRepository.save(newProd);
-        this.closeModal();
-        this.renderCurrentView();
+
+        try {
+          await productsRepository.save(newProd);
+          await dataStore.syncAllFromSupabase();
+          this.closeModal();
+          this.renderCurrentView();
+        } catch (err) {
+          alert(`⚠️ Supabase Save Failed: ${err.message}`);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+        }
       }
     });
   }
