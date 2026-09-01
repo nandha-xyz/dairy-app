@@ -78,9 +78,11 @@ export const storesView = {
                     <td>
                       <span class="badge badge-confirmed">${store.status}</span>
                     </td>
-                    <td style="text-align:right;">
+                    <td style="text-align:right; white-space:nowrap;">
                       <button class="btn btn-secondary btn-sm btn-view-store-detail" data-store-id="${store.id}">View</button>
                       <button class="btn btn-primary btn-sm btn-enter-req" data-store-id="${store.id}">Req</button>
+                      <button class="btn btn-secondary btn-sm btn-edit-store" data-store-id="${store.id}">Edit</button>
+                      <button class="btn btn-secondary btn-sm btn-delete-store" data-store-id="${store.id}" style="color:#DC2626; border-color:#FCA5A5;">Delete</button>
                     </td>
                   </tr>
                 `;
@@ -116,7 +118,7 @@ export const storesView = {
     return `
       <!-- Store Header Card -->
       <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, #FFFFFF, #F1F5F9);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
           <div>
             <div style="display:flex; align-items:center; gap:0.75rem;">
               <h2 style="font-size: 1.6rem; font-weight: 800;">${store.name}</h2>
@@ -130,6 +132,10 @@ export const storesView = {
           <div style="text-align:right; background:white; padding:1rem 1.5rem; border-radius:var(--radius-md); border:1px solid var(--border-color);">
             <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Outstanding Balance</div>
             <div style="font-size:1.8rem; font-weight:800; color:${outstanding > 0 ? '#DC2626' : '#059669'};">${workflowEngine.formatCurrency(outstanding)}</div>
+            <div style="margin-top:0.5rem; display:flex; gap:0.5rem; justify-content:flex-end;">
+              <button class="btn btn-secondary btn-sm btn-edit-store" data-store-id="${store.id}">✏️ Edit</button>
+              <button class="btn btn-secondary btn-sm btn-delete-store" data-store-id="${store.id}" style="color:#DC2626; border-color:#FCA5A5;">🗑️ Delete</button>
+            </div>
           </div>
         </div>
       </div>

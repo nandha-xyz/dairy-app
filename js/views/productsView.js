@@ -47,8 +47,9 @@ export const productsView = {
                   <td>
                     <span class="badge ${p.active ? 'badge-confirmed' : 'badge-draft'}">${p.active ? 'Active' : 'Inactive'}</span>
                   </td>
-                  <td style="text-align:right;">
+                  <td style="text-align:right; white-space:nowrap;">
                     <button class="btn btn-secondary btn-sm btn-edit-product" data-product-id="${p.id}">Edit</button>
+                    <button class="btn btn-secondary btn-sm btn-delete-product" data-product-id="${p.id}" style="color:#DC2626; border-color:#FCA5A5;">Delete</button>
                   </td>
                 </tr>
               `).join('') : `

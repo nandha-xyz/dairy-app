@@ -279,6 +279,27 @@ export const storesRepository = {
     db.set(STORAGE_KEYS.STORES, stores);
 
     return store;
+  },
+
+  delete: async (storeId) => {
+    if (supabase) {
+      const { error } = await supabase.from('stores').delete().eq('id', storeId);
+      if (error) {
+        throw new Error(`Cloud delete error (Stores): ${error.message}`);
+      }
+    }
+
+    const stores = db.get(STORAGE_KEYS.STORES).filter(s => s.id !== storeId);
+    db.set(STORAGE_KEYS.STORES, stores);
+
+    const requirements = db.get(STORAGE_KEYS.REQUIREMENTS).filter(r => r.storeId !== storeId);
+    db.set(STORAGE_KEYS.REQUIREMENTS, requirements);
+
+    const invoices = db.get(STORAGE_KEYS.INVOICES).filter(i => i.storeId !== storeId);
+    db.set(STORAGE_KEYS.INVOICES, invoices);
+
+    const payments = db.get(STORAGE_KEYS.PAYMENTS).filter(p => p.storeId !== storeId);
+    db.set(STORAGE_KEYS.PAYMENTS, payments);
   }
 };
 
@@ -304,6 +325,18 @@ export const productsRepository = {
     db.set(STORAGE_KEYS.PRODUCTS, products);
 
     return product;
+  },
+
+  delete: async (productId) => {
+    if (supabase) {
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+      if (error) {
+        throw new Error(`Cloud delete error (Products): ${error.message}`);
+      }
+    }
+
+    const products = db.get(STORAGE_KEYS.PRODUCTS).filter(p => p.id !== productId);
+    db.set(STORAGE_KEYS.PRODUCTS, products);
   }
 };
 
@@ -407,6 +440,21 @@ export const invoicesRepository = {
     db.set(STORAGE_KEYS.INVOICES, invoices);
 
     return invoice;
+  },
+
+  delete: async (invoiceId) => {
+    if (supabase) {
+      const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
+      if (error) {
+        throw new Error(`Cloud delete error (Invoices): ${error.message}`);
+      }
+    }
+
+    const invoices = db.get(STORAGE_KEYS.INVOICES).filter(i => i.id !== invoiceId);
+    db.set(STORAGE_KEYS.INVOICES, invoices);
+
+    const payments = db.get(STORAGE_KEYS.PAYMENTS).filter(p => p.invoiceId !== invoiceId);
+    db.set(STORAGE_KEYS.PAYMENTS, payments);
   }
 };
 

@@ -261,6 +261,46 @@ class AppController {
         this.openAddProductModal();
       }
 
+      // Edit & Delete Store handlers
+      const editStoreBtn = e.target.closest('.btn-edit-store');
+      if (editStoreBtn && editStoreBtn.dataset.storeId) {
+        this.openAddStoreModal(editStoreBtn.dataset.storeId);
+      }
+
+      const deleteStoreBtn = e.target.closest('.btn-delete-store');
+      if (deleteStoreBtn && deleteStoreBtn.dataset.storeId) {
+        const storeId = deleteStoreBtn.dataset.storeId;
+        const store = storesRepository.getById(storeId);
+        if (confirm(`🗑️ Delete Store "${store ? store.name : 'Store'}"?\n\nThis will permanently delete this store from Supabase along with its associated records.`)) {
+          this.handleDeleteStore(storeId);
+        }
+      }
+
+      // Edit & Delete Product handlers
+      const editProductBtn = e.target.closest('.btn-edit-product');
+      if (editProductBtn && editProductBtn.dataset.productId) {
+        this.openAddProductModal(editProductBtn.dataset.productId);
+      }
+
+      const deleteProductBtn = e.target.closest('.btn-delete-product');
+      if (deleteProductBtn && deleteProductBtn.dataset.productId) {
+        const productId = deleteProductBtn.dataset.productId;
+        const product = productsRepository.getById(productId);
+        if (confirm(`🗑️ Delete Product "${product ? product.name : 'Product'}"?\n\nThis will permanently remove this product from catalog.`)) {
+          this.handleDeleteProduct(productId);
+        }
+      }
+
+      // Delete Invoice handler
+      const deleteInvBtn = e.target.closest('.btn-delete-invoice');
+      if (deleteInvBtn && deleteInvBtn.dataset.invoiceId) {
+        const invoiceId = deleteInvBtn.dataset.invoiceId;
+        const inv = invoicesRepository.getById(invoiceId);
+        if (confirm(`🗑️ Delete Invoice "${inv ? inv.invoiceNumber : 'Invoice'}"?\n\nThis will remove the invoice record from Supabase.`)) {
+          this.handleDeleteInvoice(invoiceId);
+        }
+      }
+
       // Export Data buttons
       if (e.target.closest('#btn-export-json')) {
         exportService.exportFullBackupJSON();
@@ -317,20 +357,24 @@ class AppController {
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving to Cloud...'; }
 
         const formData = new FormData(e.target);
-        const newStore = {
-          id: `s-${Date.now()}`,
-          code: `STR-${formData.get('location').substring(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
+        const existingStoreId = formData.get('storeId');
+        const existingCode = formData.get('code');
+        const existingStore = existingStoreId ? storesRepository.getById(existingStoreId) : null;
+
+        const storeObj = {
+          id: existingStoreId || `s-${Date.now()}`,
+          code: existingCode || `STR-${formData.get('location').substring(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
           name: formData.get('name'),
           location: formData.get('location'),
           contactPerson: formData.get('contactPerson'),
           phone: formData.get('phone'),
-          status: 'Active',
+          status: existingStore ? existingStore.status : 'Active',
           address: formData.get('address'),
-          recurringRequirements: {}
+          recurringRequirements: existingStore ? (existingStore.recurringRequirements || {}) : {}
         };
 
         try {
-          await storesRepository.save(newStore);
+          await storesRepository.save(storeObj);
           await dataStore.syncAllFromSupabase();
           this.closeModal();
           this.renderCurrentView();
@@ -347,20 +391,24 @@ class AppController {
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving to Cloud...'; }
 
         const formData = new FormData(e.target);
-        const newProd = {
-          id: `p-${Date.now()}`,
-          sku: `PRD-${formData.get('name').substring(0, 3).toUpperCase()}-0${Math.floor(1 + Math.random() * 9)}`,
+        const existingProductId = formData.get('productId');
+        const existingSku = formData.get('sku');
+        const existingProd = existingProductId ? productsRepository.getById(existingProductId) : null;
+
+        const prodObj = {
+          id: existingProductId || `p-${Date.now()}`,
+          sku: existingSku || `PRD-${formData.get('name').substring(0, 3).toUpperCase()}-0${Math.floor(1 + Math.random() * 9)}`,
           name: formData.get('name'),
           category: formData.get('category'),
           unit: formData.get('unit'),
           sellingPrice: parseFloat(formData.get('sellingPrice')) || 0,
           purchasePrice: parseFloat(formData.get('purchasePrice')) || 0,
           taxPercent: parseFloat(formData.get('taxPercent')) || 0,
-          active: true
+          active: existingProd ? existingProd.active : true
         };
 
         try {
-          await productsRepository.save(newProd);
+          await productsRepository.save(prodObj);
           await dataStore.syncAllFromSupabase();
           this.closeModal();
           this.renderCurrentView();
@@ -494,40 +542,78 @@ class AppController {
     backdrop.classList.add('open');
   }
 
-  openAddStoreModal() {
+  async handleDeleteStore(storeId) {
+    try {
+      await storesRepository.delete(storeId);
+      await dataStore.syncAllFromSupabase();
+      if (this.currentView === 'storeDetail' && this.selectedStoreId === storeId) {
+        this.currentView = 'stores';
+        this.selectedStoreId = null;
+      }
+      this.renderCurrentView();
+    } catch (err) {
+      alert(`⚠️ Delete Store Failed: ${err.message}`);
+    }
+  }
+
+  async handleDeleteProduct(productId) {
+    try {
+      await productsRepository.delete(productId);
+      await dataStore.syncAllFromSupabase();
+      this.renderCurrentView();
+    } catch (err) {
+      alert(`⚠️ Delete Product Failed: ${err.message}`);
+    }
+  }
+
+  async handleDeleteInvoice(invoiceId) {
+    try {
+      await invoicesRepository.delete(invoiceId);
+      await dataStore.syncAllFromSupabase();
+      this.renderCurrentView();
+    } catch (err) {
+      alert(`⚠️ Delete Invoice Failed: ${err.message}`);
+    }
+  }
+
+  openAddStoreModal(storeId = null) {
+    const store = storeId ? storesRepository.getById(storeId) : null;
+    const isEdit = !!store;
     const backdrop = document.getElementById('modal-backdrop');
     backdrop.innerHTML = `
       <div class="modal-card">
-        <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:1rem;">Add New Retail Store</h3>
+        <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:1rem;">${isEdit ? 'Edit Retail Store' : 'Add New Retail Store'}</h3>
         <form id="add-store-form">
+          <input type="hidden" name="storeId" value="${isEdit ? store.id : ''}" />
+          <input type="hidden" name="code" value="${isEdit ? store.code : ''}" />
           <div class="form-group">
             <label class="form-label">Store Name</label>
-            <input type="text" name="name" class="form-input" required placeholder="e.g. Fresh Dairy Express" />
+            <input type="text" name="name" class="form-input" required value="${isEdit ? store.name : ''}" placeholder="e.g. Fresh Dairy Express" />
           </div>
           <div class="form-group">
             <label class="form-label">Location / City</label>
             <select name="location" class="form-select" required>
-              <option value="Coimbatore">Coimbatore</option>
-              <option value="Pollachi">Pollachi</option>
-              <option value="Tiruppur">Tiruppur</option>
-              <option value="Erode">Erode</option>
+              <option value="Coimbatore" ${isEdit && store.location === 'Coimbatore' ? 'selected' : ''}>Coimbatore</option>
+              <option value="Pollachi" ${isEdit && store.location === 'Pollachi' ? 'selected' : ''}>Pollachi</option>
+              <option value="Tiruppur" ${isEdit && store.location === 'Tiruppur' ? 'selected' : ''}>Tiruppur</option>
+              <option value="Erode" ${isEdit && store.location === 'Erode' ? 'selected' : ''}>Erode</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Contact Person</label>
-            <input type="text" name="contactPerson" class="form-input" required placeholder="Contact name" />
+            <input type="text" name="contactPerson" class="form-input" required value="${isEdit ? store.contactPerson : ''}" placeholder="Contact name" />
           </div>
           <div class="form-group">
             <label class="form-label">Phone Number</label>
-            <input type="text" name="phone" class="form-input" required placeholder="+91 98421 00000" />
+            <input type="text" name="phone" class="form-input" required value="${isEdit ? store.phone : ''}" placeholder="+91 98421 00000" />
           </div>
           <div class="form-group">
             <label class="form-label">Store Address</label>
-            <input type="text" name="address" class="form-input" required placeholder="Street address, landmark" />
+            <input type="text" name="address" class="form-input" required value="${isEdit ? store.address : ''}" placeholder="Street address, landmark" />
           </div>
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
             <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Store</button>
+            <button type="submit" class="btn btn-primary">${isEdit ? 'Update Store' : 'Save Store'}</button>
           </div>
         </form>
       </div>
@@ -535,53 +621,57 @@ class AppController {
     backdrop.classList.add('open');
   }
 
-  openAddProductModal() {
+  openAddProductModal(productId = null) {
+    const product = productId ? productsRepository.getById(productId) : null;
+    const isEdit = !!product;
     const backdrop = document.getElementById('modal-backdrop');
     backdrop.innerHTML = `
       <div class="modal-card">
-        <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:1rem;">Add New Dairy Product</h3>
+        <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:1rem;">${isEdit ? 'Edit Dairy Product' : 'Add New Dairy Product'}</h3>
         <form id="add-product-form">
+          <input type="hidden" name="productId" value="${isEdit ? product.id : ''}" />
+          <input type="hidden" name="sku" value="${isEdit ? product.sku : ''}" />
           <div class="form-group">
             <label class="form-label">Product Name</label>
-            <input type="text" name="name" class="form-input" required placeholder="e.g. Fresh Buffalo Curd" />
+            <input type="text" name="name" class="form-input" required value="${isEdit ? product.name : ''}" placeholder="e.g. Fresh Buffalo Curd" />
           </div>
           <div class="form-group">
             <label class="form-label">Category</label>
             <select name="category" class="form-select">
-              <option value="Milk">Milk</option>
-              <option value="Curd">Curd</option>
-              <option value="Paneer">Paneer</option>
-              <option value="Cheese">Cheese</option>
-              <option value="Beverages">Beverages</option>
-              <option value="Ghee">Ghee</option>
-              <option value="Cream">Cream</option>
+              <option value="Milk" ${isEdit && product.category === 'Milk' ? 'selected' : ''}>Milk</option>
+              <option value="Curd" ${isEdit && product.category === 'Curd' ? 'selected' : ''}>Curd</option>
+              <option value="Paneer" ${isEdit && product.category === 'Paneer' ? 'selected' : ''}>Paneer</option>
+              <option value="Cheese" ${isEdit && product.category === 'Cheese' ? 'selected' : ''}>Cheese</option>
+              <option value="Beverages" ${isEdit && product.category === 'Beverages' ? 'selected' : ''}>Beverages</option>
+              <option value="Ghee" ${isEdit && product.category === 'Ghee' ? 'selected' : ''}>Ghee</option>
+              <option value="Cream" ${isEdit && product.category === 'Cream' ? 'selected' : ''}>Cream</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Unit</label>
             <select name="unit" class="form-select">
-              <option value="Litre">Litre</option>
-              <option value="Kilogram">Kilogram</option>
-              <option value="Packet">Packet</option>
-              <option value="Box">Box</option>
-              <option value="Piece">Piece</option>
+              <option value="Litre" ${isEdit && product.unit === 'Litre' ? 'selected' : ''}>Litre</option>
+              <option value="Kilogram" ${isEdit && product.unit === 'Kilogram' ? 'selected' : ''}>Kilogram</option>
+              <option value="Packet" ${isEdit && product.unit === 'Packet' ? 'selected' : ''}>Packet</option>
+              <option value="Box" ${isEdit && product.unit === 'Box' ? 'selected' : ''}>Box</option>
+              <option value="Piece" ${isEdit && product.unit === 'Piece' ? 'selected' : ''}>Piece</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Selling Price (₹)</label>
-            <input type="number" name="sellingPrice" class="form-input" required min="1" step="0.5" />
+            <input type="number" name="sellingPrice" class="form-input" required min="1" step="0.5" value="${isEdit ? product.sellingPrice : ''}" />
           </div>
           <div class="form-group">
             <label class="form-label">Purchase Cost Price (₹)</label>
-            <input type="number" name="purchasePrice" class="form-input" required min="1" step="0.5" />
+            <input type="number" name="purchasePrice" class="form-input" required min="1" step="0.5" value="${isEdit ? product.purchasePrice : ''}" />
           </div>
           <div class="form-group">
             <label class="form-label">Tax (GST %)</label>
-            <input type="number" name="taxPercent" class="form-input" value="0" min="0" max="28" />
+            <input type="number" name="taxPercent" class="form-input" value="${isEdit ? product.taxPercent : 0}" min="0" max="28" />
           </div>
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
             <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Product</button>
+            <button type="submit" class="btn btn-primary">${isEdit ? 'Update Product' : 'Save Product'}</button>
           </div>
         </form>
       </div>

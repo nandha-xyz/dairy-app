@@ -62,8 +62,9 @@ export const invoicesView = {
                   <td>
                     <span class="badge badge-${inv.status.toLowerCase().replace(/\s+/g, '')}">${inv.status}</span>
                   </td>
-                  <td style="text-align:right;">
+                  <td style="text-align:right; white-space:nowrap;">
                     <button class="btn btn-secondary btn-sm btn-view-invoice" data-invoice-id="${inv.id}">Preview & Pay</button>
+                    <button class="btn btn-secondary btn-sm btn-delete-invoice" data-invoice-id="${inv.id}" style="color:#DC2626; border-color:#FCA5A5;">Delete</button>
                   </td>
                 </tr>
               `).join('') : `
