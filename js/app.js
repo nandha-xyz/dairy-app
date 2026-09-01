@@ -4,6 +4,7 @@ import { workflowEngine } from './services/workflowEngine.js';
 import { aiCopilotService } from './services/aiCopilot.js';
 import { aiAgentEngine } from './services/aiAgentEngine.js';
 import { authService } from './services/authService.js';
+import { exportService } from './services/exportService.js';
 
 import { dashboardView } from './views/dashboardView.js';
 import { requirementsView } from './views/requirementsView.js';
@@ -258,6 +259,23 @@ class AppController {
       // Add Product modal
       if (e.target.id === 'btn-add-product') {
         this.openAddProductModal();
+      }
+
+      // Export Data buttons
+      if (e.target.closest('#btn-export-json')) {
+        exportService.exportFullBackupJSON();
+      }
+      if (e.target.closest('#btn-export-stores-csv')) {
+        exportService.exportStoresCSV();
+      }
+      if (e.target.closest('#btn-export-products-csv')) {
+        exportService.exportProductsCSV();
+      }
+      if (e.target.closest('#btn-export-invoices-csv')) {
+        exportService.exportInvoicesCSV();
+      }
+      if (e.target.closest('#btn-export-payments-csv')) {
+        exportService.exportPaymentsCSV();
       }
     });
 

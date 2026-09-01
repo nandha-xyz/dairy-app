@@ -84,7 +84,7 @@ export const ordersView = {
               </tr>
             </thead>
             <tbody id="po-table-body">
-              ${consolidated.map(item => `
+              ${consolidated.length > 0 ? consolidated.map(item => `
                 <tr>
                   <td style="font-weight:700;">${item.product.name}</td>
                   <td><span class="badge badge-draft">${item.product.category}</span></td>
@@ -110,7 +110,18 @@ export const ordersView = {
                     ${workflowEngine.formatCurrency(item.estimatedCost)}
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="7">
+                    <div class="empty-state" style="padding:2rem;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:36px; height:36px; color:var(--text-muted); margin-bottom:0.5rem;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                      <h4 style="font-weight:700; color:var(--text-secondary); margin-bottom:0.25rem;">No purchase order items yet</h4>
+                      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">Add products to your catalog to generate consolidated daily supplier purchase orders.</p>
+                      <button class="btn btn-primary btn-sm" id="btn-add-product">Add Product</button>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
             <tfoot>
               <tr style="background:var(--bg-card-subtle); font-size:1rem;">

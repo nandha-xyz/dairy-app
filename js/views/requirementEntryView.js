@@ -112,7 +112,15 @@ export const requirementEntryView = {
               </tr>
             </thead>
             <tbody id="entry-table-body">
-              ${itemsRows}
+              ${itemsRows ? itemsRows : `
+                <tr>
+                  <td colspan="7">
+                    <div class="empty-state" style="padding:1.5rem;">
+                      No products in catalog yet. Click "Add Product from Catalog" below.
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>
