@@ -45,6 +45,18 @@ export const authService = {
     return await client.auth.signOut();
   },
 
+  // Returns the current user synchronously from the cached session.
+  // NOTE: Only valid after getCurrentSession() has been awaited once.
+  getUser: () => {
+    // Access from the supabase global since we are a static JS app with no state store.
+    const client = authService.getSupabaseClient();
+    if (!client) return null;
+    // supabase-js v2 stores session in memory; we expose the last known user via
+    // the auth state. For a lightweight fallback we return null and let callers
+    // use the session.user they already have in scope.
+    return window.__dairyAppCurrentUser || null;
+  },
+
   onAuthStateChange: (callback) => {
     const client = authService.getSupabaseClient();
     if (!client) return null;

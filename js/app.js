@@ -1021,6 +1021,8 @@ async function updateUIForSession(session) {
     if (userAvatarBadge) userAvatarBadge.textContent = userEmail.substring(0, 2).toUpperCase();
 
     // Check user role from Supabase user_roles
+    // Cache user globally so authService.getUser() can return it synchronously
+    window.__dairyAppCurrentUser = session.user;
     const role = await userRolesRepository.getRole(session.user);
     window.currentUserRole = role;
 
@@ -1064,6 +1066,7 @@ async function updateUIForSession(session) {
     window.app.userRole = role;
     window.app.handleNavigation();
   } else {
+    window.__dairyAppCurrentUser = null;
     if (appRoot) appRoot.style.display = 'none';
     if (authContainer) authContainer.style.display = 'flex';
   }
