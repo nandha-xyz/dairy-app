@@ -111,7 +111,7 @@ export const adminStoreMapView = {
     `;
   },
 
-  initLeafletMap() {
+  async initLeafletMap() {
     if (typeof window.L === 'undefined') return;
     const container = document.getElementById('leaflet-store-map');
     if (!container) return;
