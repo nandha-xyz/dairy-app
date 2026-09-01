@@ -98,6 +98,9 @@ export const invoicesView = {
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem; max-width: 800px; margin-left: auto; margin-right: auto;">
         <button class="btn btn-secondary btn-sm" id="btn-back-to-invoices">← Back to Invoices</button>
         <div style="display:flex; gap:0.5rem;">
+          ${inv.outstandingAmount > 0 && store && store.phone ? `
+            <a href="https://wa.me/91${store.phone.replace(/\\D/g, '')}?text=${encodeURIComponent(`Hello ${store.contactPerson || store.name},\n\nThis is a friendly reminder from Kovai Dairy. Your invoice ${inv.invoiceNumber} has an outstanding balance of ₹${inv.outstandingAmount}. Please arrange payment at your earliest convenience.\n\nThank you!`)}" target="_blank" class="btn btn-secondary btn-sm" style="background: #DCF8C6; color: #075E54; border-color: #DCF8C6; font-weight: 600; text-decoration: none;">💬 WhatsApp Reminder</a>
+          ` : ''}
           <button class="btn btn-secondary btn-sm" onclick="window.print();">🖨️ Print Invoice</button>
           ${inv.outstandingAmount > 0 ? `
             <button class="btn btn-primary btn-sm btn-record-payment-modal" data-invoice-id="${inv.id}">💳 Record Payment</button>
