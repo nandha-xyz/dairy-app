@@ -13,9 +13,50 @@
   <link rel="stylesheet" href="css/main.css?v=300">
   <link rel="stylesheet" href="css/components.css?v=300">
   <link rel="stylesheet" href="css/views.css?v=300">
+  <!-- Supabase Official Browser CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="app-container" id="app-root">
+  <!-- Authentication Overlay (Supabase Auth Screen) -->
+  <div id="auth-container" class="auth-wrapper" style="display: flex;">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="brand-icon-lg">K</div>
+        <h2>Kovai Dairy</h2>
+        <p>Distribution & Billing SaaS Platform</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" id="auth-tab-signin" class="auth-tab active">Sign In</button>
+        <button type="button" id="auth-tab-signup" class="auth-tab">Create Account</button>
+      </div>
+
+      <div id="auth-alert" class="auth-alert" style="display: none;"></div>
+
+      <form id="auth-form">
+        <div class="form-group">
+          <label class="form-label" for="auth-email">Email Address</label>
+          <input type="email" id="auth-email" class="form-input" required placeholder="admin@kovaidairy.com" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="auth-password">Password</label>
+          <input type="password" id="auth-password" class="form-input" required minlength="6" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="btn btn-primary auth-submit-btn">
+          <span id="auth-submit-text">Sign In</span>
+          <span id="auth-submit-spinner" class="spinner" style="display: none;"></span>
+        </button>
+      </form>
+
+      <div class="auth-footer-text">
+        🔒 Secured by Supabase Authentication
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Root (Hidden until authenticated) -->
+  <div class="app-container" id="app-root" style="display: none;">
     
     <!-- Mobile Sticky Header -->
     <div class="mobile-header">
@@ -81,12 +122,17 @@
         </a>
       </nav>
 
-      <div class="sidebar-footer">
-        <div class="admin-avatar">AD</div>
-        <div class="admin-info">
-          <div class="name">Admin Operations</div>
-          <div class="role">Coimbatore Region</div>
+      <div class="sidebar-footer" style="justify-content:space-between; gap:0.5rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem; overflow:hidden;">
+          <div class="admin-avatar" id="user-avatar-badge">AD</div>
+          <div class="admin-info" style="overflow:hidden; text-overflow:ellipsis;">
+            <div class="name" id="user-email-display" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px;">Admin</div>
+            <div class="role">Coimbatore Region</div>
+          </div>
         </div>
+        <button id="btn-signout" class="btn btn-secondary btn-sm" style="padding:0.35rem 0.55rem; font-size:0.75rem; background:#1E293B; border-color:#334155; color:#F1F5F9; border-radius:6px;" title="Sign Out">
+          Sign Out
+        </button>
       </div>
     </aside>
 
@@ -192,7 +238,7 @@
   <!-- Modal Overlay Backdrop -->
   <div class="modal-overlay" id="modal-backdrop"></div>
 
-  <!-- Main JavaScript App Entry with 2026 AI Agent Cache Buster -->
-  <script type="module" src="js/app.js?v=2026_agent_v5"></script>
+  <!-- Main JavaScript App Entry with Supabase Auth -->
+  <script type="module" src="js/app.js?v=2026_auth_v1"></script>
 </body>
 </html>

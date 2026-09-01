@@ -3,6 +3,7 @@ import { storesRepository, productsRepository, paymentsRepository, requirementsR
 import { workflowEngine } from './services/workflowEngine.js';
 import { aiCopilotService } from './services/aiCopilot.js';
 import { aiAgentEngine } from './services/aiAgentEngine.js';
+import { authService } from './services/authService.js';
 
 import { dashboardView } from './views/dashboardView.js';
 import { requirementsView } from './views/requirementsView.js';
@@ -569,10 +570,151 @@ class AppController {
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    window.app = new AppController();
-  });
-} else {
-  window.app = new AppController();
 }
+
+// ==========================================================================
+// SUPABASE AUTHENTICATION MANAGER & APP INITIALIZATION
+// ==========================================================================
+let authMode = 'signin'; // 'signin' or 'signup'
+
+function showAlert(message, isSuccess = false) {
+  const alertEl = document.getElementById('auth-alert');
+  if (!alertEl) return;
+  alertEl.className = `auth-alert ${isSuccess ? 'auth-alert-success' : 'auth-alert-error'}`;
+  alertEl.innerHTML = `${isSuccess ? '✅' : '⚠️'} <span>${message}</span>`;
+  alertEl.style.display = 'flex';
+}
+
+function hideAlert() {
+  const alertEl = document.getElementById('auth-alert');
+  if (alertEl) alertEl.style.display = 'none';
+}
+
+function setAuthLoading(isLoading) {
+  const btn = document.getElementById('auth-submit-btn');
+  const text = document.getElementById('auth-submit-text');
+  const spinner = document.getElementById('auth-submit-spinner');
+  if (!btn || !text || !spinner) return;
+
+  btn.disabled = isLoading;
+  if (isLoading) {
+    text.style.display = 'none';
+    spinner.style.display = 'inline-block';
+  } else {
+    text.style.display = 'inline-block';
+    spinner.style.display = 'none';
+  }
+}
+
+function setupAuthUI() {
+  const tabSignin = document.getElementById('auth-tab-signin');
+  const tabSignup = document.getElementById('auth-tab-signup');
+  const submitText = document.getElementById('auth-submit-text');
+  const authForm = document.getElementById('auth-form');
+  const btnSignout = document.getElementById('btn-signout');
+
+  if (tabSignin && tabSignup) {
+    tabSignin.addEventListener('click', () => {
+      authMode = 'signin';
+      tabSignin.classList.add('active');
+      tabSignup.classList.remove('active');
+      if (submitText) submitText.textContent = 'Sign In';
+      hideAlert();
+    });
+
+    tabSignup.addEventListener('click', () => {
+      authMode = 'signup';
+      tabSignup.classList.add('active');
+      tabSignin.classList.remove('active');
+      if (submitText) submitText.textContent = 'Create Account';
+      hideAlert();
+    });
+  }
+
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAlert();
+      const email = document.getElementById('auth-email')?.value.trim();
+      const password = document.getElementById('auth-password')?.value;
+
+      if (!email || !password) {
+        showAlert('Please enter both email and password.');
+        return;
+      }
+
+      setAuthLoading(true);
+
+      try {
+        if (authMode === 'signin') {
+          const { data, error } = await authService.signIn(email, password);
+          if (error) {
+            showAlert(error.message || 'Sign in failed. Check your credentials.');
+          } else if (data.session) {
+            updateUIForSession(data.session);
+          }
+        } else {
+          const { data, error } = await authService.signUp(email, password);
+          if (error) {
+            showAlert(error.message || 'Account creation failed.');
+          } else if (data.session) {
+            updateUIForSession(data.session);
+          } else if (data.user) {
+            showAlert('Account created! If confirmation is required, please check your email.', true);
+          }
+        }
+      } catch (err) {
+        showAlert(err.message || 'An unexpected error occurred.');
+      } finally {
+        setAuthLoading(false);
+      }
+    });
+  }
+
+  if (btnSignout) {
+    btnSignout.addEventListener('click', async () => {
+      await authService.signOut();
+      updateUIForSession(null);
+    });
+  }
+}
+
+function updateUIForSession(session) {
+  const authContainer = document.getElementById('auth-container');
+  const appRoot = document.getElementById('app-root');
+  const userEmailDisplay = document.getElementById('user-email-display');
+  const userAvatarBadge = document.getElementById('user-avatar-badge');
+
+  if (session && session.user) {
+    if (authContainer) authContainer.style.display = 'none';
+    if (appRoot) appRoot.style.display = 'flex';
+
+    const userEmail = session.user.email || 'Admin';
+    if (userEmailDisplay) userEmailDisplay.textContent = userEmail;
+    if (userAvatarBadge) userAvatarBadge.textContent = userEmail.substring(0, 2).toUpperCase();
+
+    if (!window.app) {
+      window.app = new AppController();
+    }
+  } else {
+    if (appRoot) appRoot.style.display = 'none';
+    if (authContainer) authContainer.style.display = 'flex';
+  }
+}
+
+async function initAuthApp() {
+  setupAuthUI();
+  const session = await authService.getCurrentSession();
+  updateUIForSession(session);
+
+  authService.onAuthStateChange((event, session) => {
+    updateUIForSession(session);
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAuthApp);
+} else {
+  initAuthApp();
+}
+
