@@ -115,8 +115,12 @@ export const requirementEntryView = {
               ${itemsRows ? itemsRows : `
                 <tr>
                   <td colspan="7">
-                    <div class="empty-state" style="padding:1.5rem;">
-                      No products in catalog yet. Click "Add Product from Catalog" below.
+                    <div class="empty-state" style="padding:1.5rem 1rem;">
+                      <div class="empty-state-icon" style="width:44px; height:44px; margin-bottom:0.5rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px; height:22px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                      </div>
+                      <h4 style="font-weight:700; color:var(--text-secondary); margin-bottom:0.25rem;">No items in order</h4>
+                      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0;">Select a product below to add items to this store's daily order.</p>
                     </div>
                   </td>
                 </tr>

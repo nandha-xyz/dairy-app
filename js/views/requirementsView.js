@@ -103,11 +103,13 @@ export const requirementsView = {
               }).join('') : `
                 <tr>
                   <td colspan="8">
-                    <div class="empty-state" style="padding: 2rem;">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:36px; height:36px; color:var(--text-muted); margin-bottom:0.5rem;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-                      <h4 style="font-weight:700; color:var(--text-secondary); margin-bottom:0.25rem;">No stores or requirements found</h4>
-                      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">Add retail stores to collect daily dairy requirements.</p>
-                      <button class="btn btn-primary btn-sm" id="btn-add-store">Add Store</button>
+                    <div class="empty-state">
+                      <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                      </div>
+                      <h3>No daily requirements recorded</h3>
+                      <p>Select a store to log today's order requirement quantities or add new retail stores.</p>
+                      <button class="btn btn-primary" id="btn-add-store">+ Add Store</button>
                     </div>
                   </td>
                 </tr>

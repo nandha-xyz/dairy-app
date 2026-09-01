@@ -83,9 +83,11 @@ export const reportsView = {
                 <tr>
                   <td colspan="5">
                     <div class="empty-state">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                      <h3>No analytics data available</h3>
-                      <p>Add products to your catalog and start generating invoices to view demand trends.</p>
+                      <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                      </div>
+                      <h3>No analytics data available yet</h3>
+                      <p>Add products to your catalog and start generating invoices to view demand trends and store analytics.</p>
                     </div>
                   </td>
                 </tr>

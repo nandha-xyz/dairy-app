@@ -90,9 +90,12 @@ export const storesView = {
                 <tr>
                   <td colspan="7">
                     <div class="empty-state">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-                      <h3>No stores found</h3>
-                      <p>Click "Add Store" to add your first distribution store.</p>
+                      <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                      </div>
+                      <h3>No retail stores added yet</h3>
+                      <p>Add retail stores to start managing daily dairy requirements, delivery tracking, and invoicing.</p>
+                      <button class="btn btn-primary" id="btn-add-store">+ Add First Store</button>
                     </div>
                   </td>
                 </tr>

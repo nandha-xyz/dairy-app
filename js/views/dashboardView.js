@@ -219,8 +219,13 @@ export const dashboardView = {
                   `).join('') : `
                     <tr>
                       <td colspan="6">
-                        <div class="empty-state" style="padding:1.5rem;">
-                          No products or requirements confirmed for today.
+                        <div class="empty-state" style="padding:1.75rem 1rem;">
+                          <div class="empty-state-icon" style="width:44px; height:44px; margin-bottom:0.6rem;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px; height:22px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                          </div>
+                          <h4>No products or requirements confirmed for today</h4>
+                          <p style="margin-bottom:0.75rem;">Add products to your catalog to track daily procurement requirements.</p>
+                          <button class="btn btn-primary btn-sm" id="btn-add-product">+ Add Product</button>
                         </div>
                       </td>
                     </tr>
@@ -271,8 +276,13 @@ export const dashboardView = {
                   `).join('') : `
                     <tr>
                       <td colspan="5">
-                        <div class="empty-state" style="padding:1.5rem;">
-                          No stores registered yet. Go to Stores tab to add your first store.
+                        <div class="empty-state" style="padding:1.75rem 1rem;">
+                          <div class="empty-state-icon" style="width:44px; height:44px; margin-bottom:0.6rem;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px; height:22px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                          </div>
+                          <h4>No stores registered yet</h4>
+                          <p style="margin-bottom:0.75rem;">Add retail stores to track daily requirements on your dashboard.</p>
+                          <button class="btn btn-primary btn-sm" id="btn-add-store">+ Add Store</button>
                         </div>
                       </td>
                     </tr>
@@ -304,10 +314,12 @@ export const dashboardView = {
                   </div>
                 </div>
               `).join('') : `
-                <div class="empty-state" style="padding: 2rem 1rem; text-align: center;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px; height:32px; color:var(--text-muted); margin-bottom:0.5rem;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  <h4 style="font-weight:700; color:var(--text-secondary); margin-bottom:0.25rem;">No activity yet.</h4>
-                  <p style="font-size:0.8rem; color:var(--text-muted);">Add stores, products, or record daily requirements to see real-time updates here.</p>
+                <div class="empty-state" style="padding: 1.75rem 1rem;">
+                  <div class="empty-state-icon" style="width:44px; height:44px; margin-bottom:0.6rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px; height:22px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  </div>
+                  <h4>No activity recorded yet</h4>
+                  <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0;">Add stores, products, or record daily requirements to see real-time updates here.</p>
                 </div>
               `}
             </div>

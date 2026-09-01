@@ -56,9 +56,12 @@ export const productsView = {
                 <tr>
                   <td colspan="8">
                     <div class="empty-state">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                      <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                      </div>
                       <h3>No products in catalog</h3>
-                      <p>Click "Add Product" to add dairy items to your catalog.</p>
+                      <p>Add products like Milk, Curd, Ghee, or Paneer to enable daily order entries.</p>
+                      <button class="btn btn-primary" id="btn-add-product">+ Add First Product</button>
                     </div>
                   </td>
                 </tr>

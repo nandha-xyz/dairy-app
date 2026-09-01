@@ -93,9 +93,11 @@ export const paymentsView = {
                 <tr>
                   <td colspan="8">
                     <div class="empty-state">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                      <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                      </div>
                       <h3>No payment receipts or outstanding accounts</h3>
-                      <p>Payment records will appear here once invoices are issued to stores.</p>
+                      <p>Payment records will appear here once invoices are issued to retail stores.</p>
                     </div>
                   </td>
                 </tr>

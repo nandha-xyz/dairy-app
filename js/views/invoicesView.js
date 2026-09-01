@@ -71,9 +71,11 @@ export const invoicesView = {
                 <tr>
                   <td colspan="9">
                     <div class="empty-state">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                      <h3>No invoices generated yet</h3>
-                      <p>Confirm store daily requirements to automatically generate billing invoices.</p>
+                      <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                      </div>
+                      <h3>No store invoices generated yet</h3>
+                      <p>Confirm store daily requirements to automatically generate billing invoices and track payment collections.</p>
                     </div>
                   </td>
                 </tr>
