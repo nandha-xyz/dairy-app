@@ -570,13 +570,9 @@ class AppController {
   }
 }
 
-}
-
 // ==========================================================================
 // SUPABASE AUTHENTICATION MANAGER & APP INITIALIZATION
 // ==========================================================================
-let authMode = 'signin'; // 'signin' or 'signup'
-
 function showAlert(message, isSuccess = false) {
   const alertEl = document.getElementById('auth-alert');
   if (!alertEl) return;
@@ -607,29 +603,8 @@ function setAuthLoading(isLoading) {
 }
 
 function setupAuthUI() {
-  const tabSignin = document.getElementById('auth-tab-signin');
-  const tabSignup = document.getElementById('auth-tab-signup');
-  const submitText = document.getElementById('auth-submit-text');
   const authForm = document.getElementById('auth-form');
   const btnSignout = document.getElementById('btn-signout');
-
-  if (tabSignin && tabSignup) {
-    tabSignin.addEventListener('click', () => {
-      authMode = 'signin';
-      tabSignin.classList.add('active');
-      tabSignup.classList.remove('active');
-      if (submitText) submitText.textContent = 'Sign In';
-      hideAlert();
-    });
-
-    tabSignup.addEventListener('click', () => {
-      authMode = 'signup';
-      tabSignup.classList.add('active');
-      tabSignin.classList.remove('active');
-      if (submitText) submitText.textContent = 'Create Account';
-      hideAlert();
-    });
-  }
 
   if (authForm) {
     authForm.addEventListener('submit', async (e) => {
@@ -646,25 +621,14 @@ function setupAuthUI() {
       setAuthLoading(true);
 
       try {
-        if (authMode === 'signin') {
-          const { data, error } = await authService.signIn(email, password);
-          if (error) {
-            showAlert(error.message || 'Sign in failed. Check your credentials.');
-          } else if (data.session) {
-            updateUIForSession(data.session);
-          }
-        } else {
-          const { data, error } = await authService.signUp(email, password);
-          if (error) {
-            showAlert(error.message || 'Account creation failed.');
-          } else if (data.session) {
-            updateUIForSession(data.session);
-          } else if (data.user) {
-            showAlert('Account created! If confirmation is required, please check your email.', true);
-          }
+        const { data, error } = await authService.signIn(email, password);
+        if (error) {
+          showAlert(error.message || 'Sign in failed. Check your credentials.');
+        } else if (data.session) {
+          updateUIForSession(data.session);
         }
       } catch (err) {
-        showAlert(err.message || 'An unexpected error occurred.');
+        showAlert(err.message || 'An unexpected error occurred during sign-in.');
       } finally {
         setAuthLoading(false);
       }
