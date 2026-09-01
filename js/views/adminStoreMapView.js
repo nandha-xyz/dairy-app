@@ -162,6 +162,45 @@ export const adminStoreMapView = {
       if (bounds.length > 1) {
         map.fitBounds(bounds, { padding: [30, 30] });
       }
+
+      // --- LIVE DRIVER TRACKING ---
+      if (window.supabase) {
+        const { driverTrackingRepository } = await import('../repositories/index.js');
+        const driverLocations = await driverTrackingRepository.getAllLocations();
+        
+        const driverMarkers = {};
+        const truckIcon = window.L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="background-color: #3B82F6; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 16px;">🚛</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const addOrUpdateDriverMarker = (loc) => {
+          const lat = Number(loc.latitude);
+          const lng = Number(loc.longitude);
+          if (driverMarkers[loc.driver_id]) {
+            driverMarkers[loc.driver_id].setLatLng([lat, lng]);
+          } else {
+            const marker = window.L.marker([lat, lng], { icon: truckIcon, zIndexOffset: 1000 }).addTo(map);
+            marker.bindPopup(`<strong>🚛 Driver Location</strong><br>Last seen: ${new Date(loc.updated_at).toLocaleTimeString()}`);
+            driverMarkers[loc.driver_id] = marker;
+          }
+        };
+
+        driverLocations.forEach(addOrUpdateDriverMarker);
+
+        // Subscribe to Realtime updates
+        window.supabase.channel('driver-locations-channel')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, payload => {
+            const newLoc = payload.new;
+            if (newLoc && newLoc.latitude && newLoc.longitude) {
+              addOrUpdateDriverMarker(newLoc);
+            }
+          })
+          .subscribe();
+      }
+
     } catch(e) {
       console.warn('Leaflet map initialization skipped or re-rendered:', e);
     }

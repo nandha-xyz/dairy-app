@@ -669,3 +669,32 @@ export const deliveryRunsRepository = {
     dataStore.set(STORAGE_KEYS.RUNS, runs);
   }
 };
+
+// Driver Tracking Repository
+export const driverTrackingRepository = {
+  updateLocation: async (driverId, lat, lng) => {
+    if (!supabase) return;
+    try {
+      await supabase.from('driver_locations').upsert({
+        driver_id: driverId,
+        latitude: lat,
+        longitude: lng,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'driver_id' });
+    } catch(err) {
+      console.warn('Silent location update failure:', err);
+    }
+  },
+
+  getAllLocations: async () => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase.from('driver_locations').select('*');
+      if (error) throw error;
+      return data || [];
+    } catch(err) {
+      console.error('Failed to fetch driver locations:', err);
+      return [];
+    }
+  }
+};

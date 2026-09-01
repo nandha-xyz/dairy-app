@@ -126,8 +126,13 @@ export const adminDeliveryRunView = {
           </div>
 
           <div class="form-group">
-            <label class="form-label">Select Stores to Include in this Route</label>
-            <div style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem; background: #F8FAFC;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <label class="form-label" style="margin-bottom: 0;">Select Stores to Include in this Route</label>
+              <button type="button" id="btn-optimize-route" class="btn btn-secondary btn-sm" style="background: #ECFDF5; color: #059669; border-color: #A7F3D0; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
+                🪄 Auto-Optimize Route (TSP)
+              </button>
+            </div>
+            <div id="route-stores-list" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem; background: #F8FAFC;">
               ${stores.length === 0 ? `
                 <div style="font-size: 0.85rem; color: var(--text-muted);">No stores registered yet. Please add stores first.</div>
               ` : stores.map((s, idx) => `

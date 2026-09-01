@@ -348,6 +348,11 @@ class AppController {
         this.openCreateDeliveryRunModal();
       }
 
+      // Optimize Route
+      if (e.target.closest('#btn-optimize-route')) {
+        this.optimizeRoute();
+      }
+
       // Delete Delivery Run
       const delRunBtn = e.target.closest('.btn-delete-delivery-run');
       if (delRunBtn && delRunBtn.dataset.runId) {
@@ -476,6 +481,76 @@ class AppController {
         this.closeRequirementDrawer();
       }
     });
+  }
+
+  async optimizeRoute() {
+    const form = document.getElementById('form-create-delivery-run');
+    if (!form) return;
+
+    const optimizeBtn = document.getElementById('btn-optimize-route');
+    const originalText = optimizeBtn.innerHTML;
+    optimizeBtn.innerHTML = '⏳ Optimizing...';
+    optimizeBtn.disabled = true;
+
+    try {
+      const checkedBoxes = Array.from(form.querySelectorAll('input[name="storeIds"]:checked'));
+      if (checkedBoxes.length < 2) {
+        alert('Please select at least 2 stores to optimize.');
+        return;
+      }
+
+      const stores = storesRepository.getAll();
+      const selectedStores = checkedBoxes.map(cb => stores.find(s => s.id === cb.value)).filter(s => s && s.latitude && s.longitude);
+
+      if (selectedStores.length < 2) {
+        alert('Not enough selected stores have GPS coordinates to optimize.');
+        return;
+      }
+
+      // OSRM Trip API: computes the Traveling Salesperson Problem (TSP)
+      const coords = selectedStores.map(s => `${s.longitude},${s.latitude}`).join(';');
+      const url = `https://router.project-osrm.org/trip/v1/driving/${coords}?roundtrip=false&source=first`;
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch route optimization.');
+      
+      const data = await response.json();
+      if (data.code !== 'Ok' || !data.waypoints) throw new Error('No optimal route found.');
+
+      // OSRM returns waypoints with waypoint_index corresponding to the order in the TSP route
+      // We map our selectedStores index to the waypoint_index
+      const orderedStores = [];
+      data.waypoints.forEach(wp => {
+        orderedStores[wp.waypoint_index] = selectedStores[wp.trips_index];
+      });
+
+      // Update the sequence input boxes in the form
+      orderedStores.forEach((store, index) => {
+        const seqInput = form.querySelector(`input[name="seq_${store.id}"]`);
+        if (seqInput) {
+          seqInput.value = index + 1;
+        }
+      });
+
+      // Visually sort the DOM elements in the list based on new sequence
+      const listContainer = document.getElementById('route-stores-list');
+      const storeLabels = Array.from(listContainer.querySelectorAll('label'));
+      
+      storeLabels.sort((a, b) => {
+        const seqA = parseInt(a.querySelector('input[type="number"]').value, 10) || 999;
+        const seqB = parseInt(b.querySelector('input[type="number"]').value, 10) || 999;
+        return seqA - seqB;
+      });
+
+      storeLabels.forEach(label => listContainer.appendChild(label));
+
+    } catch (error) {
+      console.error(error);
+      alert('⚠️ Optimization failed: ' + error.message);
+    } finally {
+      optimizeBtn.innerHTML = originalText;
+      optimizeBtn.disabled = false;
+    }
   }
 
   openCreateDeliveryRunModal() {
@@ -1066,11 +1141,42 @@ async function updateUIForSession(session) {
     }
     window.app.userRole = role;
     window.app.handleNavigation();
+    
+    if (role === 'driver' && session.user) {
+      startDriverTracking(session.user.id);
+    }
   } else {
     window.__dairyAppCurrentUser = null;
     if (appRoot) appRoot.style.display = 'none';
     if (authContainer) authContainer.style.display = 'flex';
   }
+}
+
+let driverTrackingInterval = null;
+function startDriverTracking(driverId) {
+  if (driverTrackingInterval) clearInterval(driverTrackingInterval);
+  
+  if (!navigator.geolocation) {
+    console.warn("Geolocation is not supported by this browser.");
+    return;
+  }
+  
+  driverTrackingInterval = navigator.geolocation.watchPosition(async (position) => {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    try {
+      const { driverTrackingRepository } = await import('./repositories/index.js');
+      await driverTrackingRepository.updateLocation(driverId, lat, lng);
+    } catch(e) {
+      console.warn("Failed to update driver tracking:", e);
+    }
+  }, (err) => {
+    console.warn("Geolocation watch error:", err);
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 10000,
+    timeout: 10000
+  });
 }
 
 async function initAuthApp() {
