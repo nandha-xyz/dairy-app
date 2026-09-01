@@ -1,4 +1,5 @@
-import { storesRepository, workflowEngine } from '../repositories/index.js';
+import { storesRepository } from '../repositories/index.js';
+import { workflowEngine } from '../services/workflowEngine.js';
 
 export const adminStoreMapView = {
   render(selectedDate = workflowEngine.getTodayString(), activeFilter = 'all') {

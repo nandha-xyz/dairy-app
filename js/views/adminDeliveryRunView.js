@@ -1,4 +1,5 @@
-import { storesRepository, deliveryRunsRepository, workflowEngine } from '../repositories/index.js';
+import { storesRepository, deliveryRunsRepository } from '../repositories/index.js';
+import { workflowEngine } from '../services/workflowEngine.js';
 
 export const adminDeliveryRunView = {
   render(selectedDate = workflowEngine.getTodayString()) {

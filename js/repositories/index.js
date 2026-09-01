@@ -517,6 +517,35 @@ export const paymentsRepository = {
   }
 };
 
+// PO Buffer Settings & Order Status Repository
+export const ordersRepository = {
+  getPOBuffers: () => {
+    try {
+      return JSON.parse(safeStorage.getItem(STORAGE_KEYS.PO_BUFFERS) || '{}');
+    } catch(e) { return {}; }
+  },
+  setPOBuffer: (productId, actualQty) => {
+    const buffers = ordersRepository.getPOBuffers();
+    buffers[productId] = actualQty;
+    safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify(buffers));
+  },
+  getByDate: (dateStr) => {
+    try {
+      const pos = JSON.parse(safeStorage.getItem(STORAGE_KEYS.POS) || '{}');
+      return pos[dateStr] || null;
+    } catch(e) { return null; }
+  },
+  savePO: (poRecord) => {
+    let pos = {};
+    try {
+      pos = JSON.parse(safeStorage.getItem(STORAGE_KEYS.POS) || '{}');
+    } catch(e) {}
+    pos[poRecord.date] = poRecord;
+    safeStorage.setItem(STORAGE_KEYS.POS, JSON.stringify(pos));
+    return poRecord;
+  }
+};
+
 // User Roles Repository
 export const userRolesRepository = {
   getRole: async (user) => {
