@@ -219,6 +219,7 @@ class AppController {
       const user = authService.getUser();
       const runs = deliveryRunsRepository.getByDriverAndDate(user ? user.id : '', this.currentDate);
       viewport.innerHTML = driverDashboardView.render(runs, this.currentDate);
+      setTimeout(() => driverDashboardView.initLeafletMap(runs), 100);
       return;
     }
 

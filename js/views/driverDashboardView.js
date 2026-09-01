@@ -91,6 +91,15 @@ export const driverDashboardView = {
           `}
         </div>
 
+        <!-- NEW: ROUTE TOPOLOGY MAP (LEAFLET) -->
+        <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div id="driver-route-map" style="height: 300px; width: 100%; background: #E2E8F0; z-index: 1;"></div>
+          <div style="padding: 0.5rem 1rem; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #64748B;">
+            <span>🗺️ Route Overview: <strong>${allStops.filter(s => s.latitude && s.longitude).length} mapped stops</strong></span>
+            <span>Map Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #2563EB;">OpenStreetMap</a> contributors</span>
+          </div>
+        </div>
+
         <!-- 2. ASSIGNED DELIVERY STOPS LIST -->
         <h3 style="font-size: 1.1rem; font-weight: 800; color: #0F172A; margin: 1.5rem 0 0.85rem 0; display: flex; justify-content: space-between; align-items: center;">
           <span>📍 Assigned Delivery Stops (${allStops.length})</span>
@@ -187,5 +196,72 @@ export const driverDashboardView = {
 
       </div>
     `;
+  },
+
+  initLeafletMap(deliveryRuns = []) {
+    if (typeof window.L === 'undefined') return;
+    const container = document.getElementById('driver-route-map');
+    if (!container) return;
+
+    const allStops = [];
+    deliveryRuns.forEach(run => {
+      if (run.stops && Array.isArray(run.stops)) {
+        allStops.push(...run.stops);
+      }
+    });
+
+    const mappedStops = allStops.filter(s => s.latitude && s.longitude);
+    if (mappedStops.length === 0) return;
+
+    let centerLat = mappedStops[0].latitude;
+    let centerLng = mappedStops[0].longitude;
+
+    try {
+      const map = window.L.map('driver-route-map').setView([centerLat, centerLng], 12);
+
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      const bounds = [];
+
+      mappedStops.forEach((stop, idx) => {
+        const lat = Number(stop.latitude);
+        const lng = Number(stop.longitude);
+        bounds.push([lat, lng]);
+        
+        const isDelivered = stop.status === 'Delivered';
+
+        const popupContent = `
+          <div style="font-family: sans-serif; padding: 0.2rem;">
+            <div style="font-size: 0.75rem; color: #64748B; margin-bottom: 0.2rem;">Stop ${stop.sequence || (idx + 1)}</div>
+            <strong style="font-size: 1rem; color: #0F172A;">${stop.store_name}</strong>
+            <div style="font-size: 0.8rem; color: #64748B; margin-top: 0.2rem;">📍 ${stop.location || 'Location'}</div>
+            <div style="margin-top: 0.6rem;">
+              <span style="font-size: 0.75rem; background: ${isDelivered ? '#10B981' : '#F59E0B'}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                ${isDelivered ? '✅ Delivered' : '⏳ Pending'}
+              </span>
+            </div>
+          </div>
+        `;
+
+        // Create a custom icon for driver stops
+        const markerIcon = window.L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="background-color: ${isDelivered ? '#10B981' : '#2563EB'}; width: 24px; height: 24px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${stop.sequence || (idx + 1)}</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        window.L.marker([lat, lng], { icon: markerIcon }).addTo(map).bindPopup(popupContent);
+      });
+
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
+    } catch(e) {
+      console.warn('Leaflet map initialization skipped or re-rendered:', e);
+    }
   }
 };
