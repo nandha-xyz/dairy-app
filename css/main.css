@@ -1,0 +1,517 @@
+:root {
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #0F172A;
+  --bg-sidebar-hover: #1E293B;
+  --bg-sidebar-active: #2563EB;
+  --bg-card: #FFFFFF;
+  --bg-card-subtle: #F1F5F9;
+
+  --border-color: #E2E8F0;
+  --border-focus: #3B82F6;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-inverse: #FFFFFF;
+
+  --accent-primary: #2563EB;
+  --accent-primary-hover: #1D4ED8;
+  --accent-light: #EFF6FF;
+
+  --status-pending-bg: #FEF3C7;
+  --status-pending-text: #92400E;
+
+  --status-draft-bg: #E2E8F0;
+  --status-draft-text: #334155;
+
+  --status-confirmed-bg: #D1FAE5;
+  --status-confirmed-text: #065F46;
+
+  --status-invoiced-bg: #DBEAFE;
+  --status-invoiced-text: #1E40AF;
+
+  --status-delivered-bg: #F3E8FF;
+  --status-delivered-text: #6B21A8;
+
+  --status-overdue-bg: #FEE2E2;
+  --status-overdue-text: #991B1B;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+}
+
+/* ==========================================================================
+   DEFAULT BASE STYLES: MOBILE FIRST (Screens <= 1024px)
+   ========================================================================== */
+
+/* Mobile Sticky Top Bar Header */
+.mobile-header {
+  display: flex;
+  background-color: var(--bg-sidebar);
+  color: white;
+  padding: 0.85rem 1.25rem;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  border-bottom: 1px solid #1E293B;
+  width: 100%;
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  background: linear-gradient(135deg, #2563EB, #3B82F6);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+/* Persistent Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background-color: var(--bg-sidebar);
+  border-top: 1px solid #1E293B;
+  z-index: 90;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  color: #94A3B8;
+  text-decoration: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.mobile-nav-btn.active {
+  color: #3B82F6;
+}
+
+.mobile-nav-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+/* Mobile Sidebar Backdrop Overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar-overlay.open {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mobile Slide-Out Drawer Sidebar (OFF-SCREEN BY DEFAULT) */
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: -320px; /* Completely hidden offscreen on mobile */
+  width: 280px;
+  background-color: var(--bg-sidebar);
+  color: #94A3B8;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar.open {
+  left: 0; /* Slide in smoothly when opened */
+}
+
+.sidebar-header {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #1E293B;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sidebar-brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.brand-text {
+  white-space: nowrap;
+}
+
+.brand-text h1 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: white;
+}
+
+.brand-text p {
+  font-size: 0.75rem;
+  color: #64748B;
+}
+
+.btn-sidebar-toggle {
+  display: none; /* Hide desktop collapse arrow on mobile */
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow-y: auto;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  color: #94A3B8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.nav-link:hover {
+  background-color: var(--bg-sidebar-hover);
+  color: white;
+}
+
+.nav-link.active {
+  background-color: var(--bg-sidebar-active);
+  color: white;
+  font-weight: 600;
+}
+
+.nav-link svg {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  stroke-width: 2;
+}
+
+.sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid #1E293B;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background-color: #334155;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.admin-info {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.admin-info .name {
+  font-weight: 600;
+  color: white;
+}
+
+.admin-info .role {
+  font-size: 0.75rem;
+  color: #64748B;
+}
+
+/* Main Wrapper (Mobile 100% Full Width) */
+.main-wrapper {
+  flex: 1;
+  margin-left: 0;
+  width: 100%;
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 70px; /* Leave space for bottom nav bar */
+  overflow-x: hidden;
+  background-color: var(--bg-app);
+}
+
+.top-bar {
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.85rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.page-title h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.page-title p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: var(--bg-card-subtle);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.date-selector-wrapper label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.date-selector-wrapper input[type="date"] {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.content-viewport {
+  padding: 0.85rem 0.75rem;
+  flex: 1;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Floating AI Assistant placement on mobile */
+#ai-assistant-widget {
+  position: fixed;
+  bottom: 4.8rem;
+  right: 0.75rem;
+  z-index: 80;
+}
+
+#btn-toggle-ai-chat {
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+#ai-chat-window {
+  width: 94%;
+  left: 3%;
+  right: 3%;
+  bottom: 4.8rem;
+  height: 460px;
+}
+
+
+/* ==========================================================================
+   DESKTOP MEDIA QUERY OVERRIDES (Screens >= 1025px)
+   ========================================================================== */
+@media (min-width: 1025px) {
+  .app-container {
+    flex-direction: row;
+  }
+
+  .mobile-header {
+    display: none;
+  }
+
+  .mobile-bottom-nav {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: none !important;
+  }
+
+  .btn-sidebar-toggle {
+    display: flex;
+    background: #1E293B;
+    border: 1px solid #334155;
+    color: #94A3B8;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 260px;
+    z-index: 100;
+    box-shadow: none;
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .main-wrapper {
+    margin-left: 260px;
+    width: calc(100% - 260px);
+    max-width: calc(100% - 260px);
+    padding-bottom: 0;
+    transition: margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .top-bar {
+    top: 0;
+    padding: 1rem 2rem;
+  }
+
+  .page-title h2 {
+    font-size: 1.4rem;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
+  }
+
+  .content-viewport {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Collapsed Sidebar State (Desktop Only) */
+  .app-container.sidebar-collapsed .sidebar {
+    width: 72px;
+  }
+
+  .app-container.sidebar-collapsed .brand-text,
+  .app-container.sidebar-collapsed .nav-link span,
+  .app-container.sidebar-collapsed .admin-info {
+    display: none;
+  }
+
+  .app-container.sidebar-collapsed .nav-link {
+    justify-content: center;
+    padding: 0.75rem;
+  }
+
+  .app-container.sidebar-collapsed .sidebar-header {
+    justify-content: center;
+    padding: 1.25rem 0.5rem;
+  }
+
+  .app-container.sidebar-collapsed .main-wrapper {
+    margin-left: 72px;
+    width: calc(100% - 72px);
+    max-width: calc(100% - 72px);
+  }
+
+  /* Desktop AI Assistant placement */
+  #ai-assistant-widget {
+    bottom: 2rem;
+    right: 2rem;
+  }
+
+  #ai-chat-window {
+    width: 400px;
+    right: 2rem;
+    left: auto;
+    bottom: 5rem;
+    height: 520px;
+  }
+}

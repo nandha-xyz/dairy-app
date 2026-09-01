@@ -1,0 +1,124 @@
+import { invoicesRepository, productsRepository, storesRepository, paymentsRepository } from '../repositories/index.js';
+import { workflowEngine } from '../services/workflowEngine.js';
+
+export const reportsView = {
+  render: () => {
+    const invoices = invoicesRepository.getAll();
+    const products = productsRepository.getAll();
+    const stores = storesRepository.getAll();
+    const payments = paymentsRepository.getAll();
+
+    const totalRevenue = invoices.reduce((s, i) => s + i.grandTotal, 0);
+    const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
+    const avgOrderVal = Math.round(totalRevenue / (invoices.length || 1));
+
+    // Calculate product sales summary
+    const productStats = products.map(p => {
+      let totalQty = 0;
+      let rev = 0;
+      invoices.forEach(inv => {
+        inv.items.forEach(item => {
+          if (item.productId === p.id) {
+            totalQty += item.quantity;
+            rev += item.amount;
+          }
+        });
+      });
+      return { product: p, totalQty, revenue: rev };
+    });
+
+    return `
+      <!-- Header -->
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 800;">Analytics & Business Reports</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Distribution metrics and demand trends</p>
+      </div>
+
+      <!-- Report Summary KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Invoiced Revenue</div>
+          <div class="kpi-value" style="color:var(--accent-primary);">${workflowEngine.formatCurrency(totalRevenue)}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Payment Collection</div>
+          <div class="kpi-value" style="color:#059669;">${workflowEngine.formatCurrency(totalCollected)}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Invoices Issued</div>
+          <div class="kpi-value">${invoices.length}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Average Invoice Value</div>
+          <div class="kpi-value">${workflowEngine.formatCurrency(avgOrderVal)}</div>
+        </div>
+      </div>
+
+      <!-- Product Demand Distribution Table -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h3 class="card-title">Product Demand & Revenue Breakdown</h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th style="text-align:right;">Total Volume Sold</th>
+                <th>Unit</th>
+                <th style="text-align:right;">Total Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${productStats.map(ps => `
+                <tr>
+                  <td style="font-weight:700;">${ps.product.name}</td>
+                  <td><span class="badge badge-draft">${ps.product.category}</span></td>
+                  <td style="text-align:right; font-weight:700; color:var(--accent-primary);">${ps.totalQty}</td>
+                  <td style="color:var(--text-muted);">${ps.product.unit}</td>
+                  <td style="text-align:right; font-weight:700;">${workflowEngine.formatCurrency(ps.revenue)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+};
+
+export const settingsView = {
+  render: () => {
+    return `
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 800;">Application Settings</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Manage business preferences and demo database</p>
+      </div>
+
+      <div class="card" style="max-width: 600px;">
+        <h3 class="card-title" style="margin-bottom: 1rem;">Business Profile</h3>
+        <div class="form-group">
+          <label class="form-label">Business Name</label>
+          <input type="text" class="form-input" value="Kovai Dairy Distribution Co." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">GSTIN</label>
+          <input type="text" class="form-input" value="33AAAAA0000A1Z5" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Operating Region</label>
+          <input type="text" class="form-input" value="Tamil Nadu (Coimbatore, Pollachi, Tiruppur, Erode)" readonly />
+        </div>
+
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-color);" />
+
+        <h3 class="card-title" style="margin-bottom: 0.5rem; color:#DC2626;">Demo Storage Control</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Reset local storage data back to initial seeded demo datasets.</p>
+        <button class="btn btn-secondary" id="btn-reset-demo-data" style="color:#DC2626; border-color:#FCA5A5;">
+          🔄 Reset Demo Data to Seed Default
+        </button>
+      </div>
+    `;
+  }
+};

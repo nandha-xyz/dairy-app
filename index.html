@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Kovai Dairy | Distribution, Ordering & Billing Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css?v=300">
+  <link rel="stylesheet" href="css/components.css?v=300">
+  <link rel="stylesheet" href="css/views.css?v=300">
+</head>
+<body>
+  <div class="app-container" id="app-root">
+    
+    <!-- Mobile Sticky Header -->
+    <div class="mobile-header">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <div class="brand-icon">K</div>
+        <span style="font-weight:700; font-size:1rem; color:white;">Kovai Dairy</span>
+      </div>
+      <button id="btn-toggle-sidebar" class="btn btn-secondary btn-sm" style="background:#1E293B; color:white; border-color:#334155;">☰ Menu</button>
+    </div>
+
+    <!-- Mobile Sidebar Dark Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Persistent Left Sidebar (Desktop / Slide-out Mobile Drawer) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand-wrapper">
+          <div class="brand-icon">K</div>
+          <div class="brand-text">
+            <h1>Kovai Dairy</h1>
+            <p>Distribution & Billing SaaS</p>
+          </div>
+        </div>
+        <button class="btn-sidebar-toggle" id="btn-toggle-sidebar-collapse" title="Collapse / Expand Sidebar">◀</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-link active" data-view="dashboard" title="Dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#requirements" class="nav-link" data-view="requirements" title="Daily Requirements">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Daily Requirements</span>
+        </a>
+        <a href="#stores" class="nav-link" data-view="stores" title="Stores Directory">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>Stores</span>
+        </a>
+        <a href="#products" class="nav-link" data-view="products" title="Product Catalog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          <span>Products</span>
+        </a>
+        <a href="#orders" class="nav-link" data-view="orders" title="Purchase Orders">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          <span>Purchase Orders</span>
+        </a>
+        <a href="#invoices" class="nav-link" data-view="invoices" title="Store Invoices">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Invoices</span>
+        </a>
+        <a href="#payments" class="nav-link" data-view="payments" title="Payments">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+          <span>Payments</span>
+        </a>
+        <a href="#reports" class="nav-link" data-view="reports" title="Analytics Reports">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Reports</span>
+        </a>
+        <a href="#settings" class="nav-link" data-view="settings" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="admin-avatar">AD</div>
+        <div class="admin-info">
+          <div class="name">Admin Operations</div>
+          <div class="role">Coimbatore Region</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+      <a href="#dashboard" class="mobile-nav-btn active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Home</span>
+      </a>
+      <a href="#requirements" class="mobile-nav-btn" data-view="requirements">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Orders</span>
+      </a>
+      <a href="#stores" class="mobile-nav-btn" data-view="stores">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>Stores</span>
+      </a>
+      <a href="#orders" class="mobile-nav-btn" data-view="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span>POs</span>
+      </a>
+      <a href="#payments" class="mobile-nav-btn" data-view="payments">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+        <span>Payments</span>
+      </a>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="main-wrapper">
+      
+      <!-- Sticky Top Header Bar -->
+      <header class="top-bar">
+        <div class="page-title">
+          <h2 id="top-bar-title">Dashboard</h2>
+          <p id="top-bar-subtitle">Operational summary</p>
+        </div>
+
+        <div class="top-bar-actions">
+          <div class="date-selector-wrapper">
+            <label for="global-date-picker">Date:</label>
+            <input type="date" id="global-date-picker" />
+          </div>
+        </div>
+      </header>
+
+      <!-- Viewport Content Area -->
+      <div class="content-viewport" id="app-viewport">
+        <!-- Views rendered here dynamically -->
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Floating AI Assistant Trigger Button -->
+  <div id="ai-assistant-widget" style="position: fixed; bottom: 5rem; right: 1rem; z-index: 80;">
+    <button id="btn-toggle-ai-chat" style="background: linear-gradient(135deg, #2563EB, #7C3AED); color: white; border: none; border-radius: 9999px; padding: 0.75rem 1.25rem; font-weight: 700; font-family: inherit; box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.5); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: transform 0.2s ease;">
+      <span style="font-size: 1.1rem;">⚡</span>
+      <span>AI Copilot</span>
+    </button>
+  </div>
+
+  <!-- Slide-Up AI Chat Window (2026 Autonomous Control Edition) -->
+  <div id="ai-chat-window" class="card" style="position: fixed; bottom: 5rem; right: 1.5rem; width: 420px; height: 550px; z-index: 1000; display: none; flex-direction: column; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35); padding: 0; border: 1px solid rgba(124, 58, 237, 0.4); overflow: hidden; border-radius: 18px;">
+    <div style="background: linear-gradient(135deg, #0F172A, #1E1B4B); color: white; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-bottom:1px solid #312E81;">
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#7C3AED,#2563EB); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem; box-shadow:0 0 15px rgba(124,58,237,0.6);">⚡</div>
+        <div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: white; display:flex; align-items:center; gap:0.4rem;">
+            Dairy Autonomous AI
+            <span style="font-size:0.65rem; background:#4338CA; color:#E0E7FF; padding:0.15rem 0.4rem; border-radius:4px; font-weight:700;">2026</span>
+          </div>
+          <div style="font-size: 0.72rem; color: #94A3B8;">Live Screen Takeover & Operations Assistant</div>
+        </div>
+      </div>
+      <button id="btn-close-ai-chat" style="background: rgba(255,255,255,0.1); border: none; color: #94A3B8; cursor: pointer; font-size: 1rem; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <div id="ai-chat-messages" style="flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; background: #F8FAFC;">
+      <div class="ai-msg bot" style="background: white; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 12px 12px 12px 0; font-size: 0.85rem; color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        👋 Hi Admin! I'm your **2026 Autonomous AI Copilot**.<br><br>
+        Ask me a question or type a command to **take control of your screen and perform operations live**!
+      </div>
+    </div>
+
+    <!-- Autonomous Screen Action Quick Chips -->
+    <div style="padding: 0.6rem 0.75rem; background: #F1F5F9; border-top: 1px solid var(--border-color); display: flex; gap: 0.4rem; overflow-x: auto; white-space: nowrap;">
+      <button class="btn btn-secondary btn-sm ai-chip" data-prompt="Auto fill missing store requirements" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; border-color:#CBD5E1; color:#1E293B; font-weight:700;">⚡ Auto-Fill Stores</button>
+      <button class="btn btn-secondary btn-sm ai-chip" data-prompt="Add a store named Kovai Bakery in Pollachi" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; border-color:#CBD5E1; color:#1E293B;">➕ Add Store</button>
+      <button class="btn btn-secondary btn-sm ai-chip" data-prompt="Add product Paneer 200g" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; border-color:#CBD5E1; color:#1E293B;">🥛 Add Product</button>
+      <button class="btn btn-secondary btn-sm ai-chip" data-prompt="Record payment 5000" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; border-color:#CBD5E1; color:#1E293B;">💳 Record Payment</button>
+    </div>
+
+    <div style="padding: 0.75rem; background: white; border-top: 1px solid var(--border-color); display: flex; gap: 0.5rem;">
+      <input type="text" id="ai-chat-input" class="form-input" placeholder="Give command (e.g. 'Add store', 'Auto fill')..." style="flex: 1; font-size: 0.85rem;" />
+      <button id="btn-send-ai-message" class="btn btn-primary btn-sm" style="background:linear-gradient(135deg,#2563EB,#7C3AED); border:none;">Send</button>
+    </div>
+  </div>
+
+  <!-- Sliding Drawer for Daily Requirement Fast Entry -->
+  <div class="drawer-card" id="requirement-drawer"></div>
+
+  <!-- Modal Overlay Backdrop -->
+  <div class="modal-overlay" id="modal-backdrop"></div>
+
+  <!-- Main JavaScript App Entry with 2026 AI Agent Cache Buster -->
+  <script type="module" src="js/app.js?v=2026_agent_v5"></script>
+</body>
+</html>
