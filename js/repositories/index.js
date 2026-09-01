@@ -1,12 +1,13 @@
-import { SEEDED_STORES, SEEDED_PRODUCTS, generateInitialHistory, getTodayDateString } from '../data/seededData.js';
+import { supabase } from '../services/supabaseClient.js';
 
 const STORAGE_KEYS = {
-  STORES: 'dairy_app_stores_v1',
-  PRODUCTS: 'dairy_app_products_v1',
-  REQUIREMENTS: 'dairy_app_requirements_v1',
-  INVOICES: 'dairy_app_invoices_v1',
-  PAYMENTS: 'dairy_app_payments_v1',
-  PO_BUFFERS: 'dairy_app_po_buffers_v1'
+  STORES: 'dairy_app_stores_v2',
+  PRODUCTS: 'dairy_app_products_v2',
+  REQUIREMENTS: 'dairy_app_requirements_v2',
+  INVOICES: 'dairy_app_invoices_v2',
+  PAYMENTS: 'dairy_app_payments_v2',
+  PO_BUFFERS: 'dairy_app_po_buffers_v2',
+  POS: 'dairy_app_po_records_v2'
 };
 
 class SafeStorage {
@@ -41,41 +42,158 @@ class SafeStorage {
 
 const safeStorage = new SafeStorage();
 
+// Data Transformers between JS domain models (camelCase) and Supabase tables (snake_case)
+const Mappers = {
+  storeToDb: (s) => ({
+    id: s.id,
+    code: s.code,
+    name: s.name,
+    location: s.location || null,
+    contact_person: s.contactPerson || null,
+    phone: s.phone || null,
+    status: s.status || 'Active',
+    address: s.address || null,
+    recurring_requirements: s.recurringRequirements || {}
+  }),
+  storeFromDb: (r) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    location: r.location || '',
+    contactPerson: r.contact_person || '',
+    phone: r.phone || '',
+    status: r.status || 'Active',
+    address: r.address || '',
+    recurringRequirements: r.recurring_requirements || {}
+  }),
+
+  productToDb: (p) => ({
+    id: p.id,
+    sku: p.sku,
+    name: p.name,
+    category: p.category || null,
+    unit: p.unit || null,
+    selling_price: p.sellingPrice || 0,
+    purchase_price: p.purchasePrice || 0,
+    tax_percent: p.taxPercent || 0,
+    active: p.active !== false
+  }),
+  productFromDb: (r) => ({
+    id: r.id,
+    sku: r.sku,
+    name: r.name,
+    category: r.category || '',
+    unit: r.unit || '',
+    sellingPrice: Number(r.selling_price || 0),
+    purchasePrice: Number(r.purchase_price || 0),
+    taxPercent: Number(r.tax_percent || 0),
+    active: r.active !== false
+  }),
+
+  requirementToDb: (req) => ({
+    id: req.id,
+    store_id: req.storeId,
+    store_code: req.storeCode || null,
+    store_name: req.storeName || null,
+    location: req.location || null,
+    date: req.date,
+    status: req.status || 'Pending',
+    items: req.items || [],
+    total_amount: req.totalAmount || 0,
+    last_updated: req.lastUpdated || null
+  }),
+  requirementFromDb: (r) => ({
+    id: r.id,
+    storeId: r.store_id,
+    storeCode: r.store_code || '',
+    storeName: r.store_name || '',
+    location: r.location || '',
+    date: r.date,
+    status: r.status || 'Pending',
+    items: r.items || [],
+    totalAmount: Number(r.total_amount || 0),
+    lastUpdated: r.last_updated || 'Just now'
+  }),
+
+  invoiceToDb: (inv) => ({
+    id: inv.id,
+    invoice_number: inv.invoiceNumber,
+    requirement_id: inv.requirementId || null,
+    store_id: inv.storeId,
+    store_name: inv.storeName || null,
+    location: inv.location || null,
+    date: inv.date,
+    due_date: inv.dueDate,
+    items: inv.items || [],
+    subtotal: inv.subtotal || 0,
+    tax: inv.tax || 0,
+    discount: inv.discount || 0,
+    grand_total: inv.grandTotal || 0,
+    paid_amount: inv.paidAmount || 0,
+    outstanding_amount: inv.outstandingAmount || 0,
+    status: inv.status || 'Generated'
+  }),
+  invoiceFromDb: (r) => ({
+    id: r.id,
+    invoiceNumber: r.invoice_number,
+    requirementId: r.requirement_id,
+    storeId: r.store_id,
+    storeName: r.store_name || '',
+    location: r.location || '',
+    date: r.date,
+    dueDate: r.due_date,
+    items: r.items || [],
+    subtotal: Number(r.subtotal || 0),
+    tax: Number(r.tax || 0),
+    discount: Number(r.discount || 0),
+    grandTotal: Number(r.grand_total || 0),
+    paidAmount: Number(r.paid_amount || 0),
+    outstandingAmount: Number(r.outstanding_amount || 0),
+    status: r.status || 'Generated'
+  }),
+
+  paymentToDb: (p) => ({
+    id: p.id,
+    invoice_id: p.invoiceId,
+    store_id: p.storeId,
+    store_name: p.storeName || null,
+    amount: p.amount || 0,
+    date: p.date,
+    mode: p.mode || 'UPI',
+    reference_no: p.referenceNo || p.referenceNumber || null,
+    notes: p.notes || null
+  }),
+  paymentFromDb: (r) => ({
+    id: r.id,
+    invoiceId: r.invoice_id,
+    storeId: r.store_id,
+    storeName: r.store_name || '',
+    amount: Number(r.amount || 0),
+    date: r.date,
+    mode: r.mode || 'UPI',
+    referenceNo: r.reference_no || '',
+    notes: r.notes || ''
+  }),
+
+  poToDb: (po) => ({
+    id: po.id,
+    date: po.date,
+    status: po.status || 'Draft',
+    total_cost: po.totalCost || 0,
+    confirmed_at: po.confirmedAt || null
+  }),
+  poFromDb: (r) => ({
+    id: r.id,
+    date: r.date,
+    status: r.status || 'Draft',
+    totalCost: Number(r.total_cost || 0),
+    confirmedAt: r.confirmed_at || null
+  })
+};
+
 class DataStore {
   constructor() {
-    this.init();
-  }
-
-  init() {
-    try {
-      const todayStr = getTodayDateString();
-      let stores = safeStorage.getItem(STORAGE_KEYS.STORES);
-      if (!stores) {
-        safeStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(SEEDED_STORES));
-      }
-      let products = safeStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      if (!products) {
-        safeStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(SEEDED_PRODUCTS));
-      }
-
-      const existingReqsRaw = safeStorage.getItem(STORAGE_KEYS.REQUIREMENTS);
-      let existingReqs = existingReqsRaw ? JSON.parse(existingReqsRaw) : [];
-      
-      const hasTodayData = existingReqs.some(r => r.date === todayStr);
-
-      if (!existingReqsRaw || !hasTodayData) {
-        const { requirements, invoices, payments } = generateInitialHistory();
-        safeStorage.setItem(STORAGE_KEYS.REQUIREMENTS, JSON.stringify(requirements));
-        safeStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(invoices));
-        safeStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
-      }
-
-      if (!safeStorage.getItem(STORAGE_KEYS.PO_BUFFERS)) {
-        safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify({}));
-      }
-    } catch (e) {
-      console.error('DataStore init error:', e);
-    }
+    this.isSynced = false;
   }
 
   get(key) {
@@ -89,9 +207,73 @@ class DataStore {
   set(key, data) {
     safeStorage.setItem(key, JSON.stringify(data));
   }
+
+  async syncAllFromSupabase() {
+    if (!supabase) return;
+    try {
+      const [
+        { data: storesData },
+        { data: productsData },
+        { data: reqsData },
+        { data: invsData },
+        { data: paysData },
+        { data: posData },
+        { data: buffersData }
+      ] = await Promise.all([
+        supabase.from('stores').select('*'),
+        supabase.from('products').select('*'),
+        supabase.from('daily_requirements').select('*'),
+        supabase.from('invoices').select('*'),
+        supabase.from('payments').select('*'),
+        supabase.from('purchase_orders').select('*'),
+        supabase.from('po_buffers').select('*')
+      ]);
+
+      if (storesData) {
+        const stores = storesData.map(Mappers.storeFromDb);
+        this.set(STORAGE_KEYS.STORES, stores);
+      }
+      if (productsData) {
+        const products = productsData.map(Mappers.productFromDb);
+        this.set(STORAGE_KEYS.PRODUCTS, products);
+      }
+      if (reqsData) {
+        const reqs = reqsData.map(Mappers.requirementFromDb);
+        this.set(STORAGE_KEYS.REQUIREMENTS, reqs);
+      }
+      if (invsData) {
+        const invs = invsData.map(Mappers.invoiceFromDb);
+        this.set(STORAGE_KEYS.INVOICES, invs);
+      }
+      if (paysData) {
+        const pays = paysData.map(Mappers.paymentFromDb);
+        this.set(STORAGE_KEYS.PAYMENTS, pays);
+      }
+      if (posData) {
+        const posMap = {};
+        posData.forEach(r => {
+          posMap[r.date] = Mappers.poFromDb(r);
+        });
+        safeStorage.setItem(STORAGE_KEYS.POS, JSON.stringify(posMap));
+      }
+      if (buffersData) {
+        const bufMap = {};
+        buffersData.forEach(b => {
+          bufMap[b.buffer_key] = Number(b.buffer_qty);
+        });
+        safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify(bufMap));
+      }
+
+      this.isSynced = true;
+    } catch (err) {
+      console.error('Supabase sync error:', err);
+    }
+  }
 }
 
 const db = new DataStore();
+
+export const dataStore = db;
 
 // Stores Repository
 export const storesRepository = {
@@ -99,10 +281,18 @@ export const storesRepository = {
   getById: (id) => db.get(STORAGE_KEYS.STORES).find(s => s.id === id),
   save: (store) => {
     const stores = db.get(STORAGE_KEYS.STORES);
+    if (!store.id) store.id = `store-${Date.now()}`;
     const idx = stores.findIndex(s => s.id === store.id);
     if (idx >= 0) stores[idx] = store;
     else stores.unshift(store);
     db.set(STORAGE_KEYS.STORES, stores);
+
+    if (supabase) {
+      supabase.from('stores').upsert(Mappers.storeToDb(store)).then(({ error }) => {
+        if (error) console.error('Supabase store save error:', error.message);
+      });
+    }
+
     return store;
   }
 };
@@ -114,10 +304,18 @@ export const productsRepository = {
   getById: (id) => db.get(STORAGE_KEYS.PRODUCTS).find(p => p.id === id),
   save: (product) => {
     const products = db.get(STORAGE_KEYS.PRODUCTS);
+    if (!product.id) product.id = `prd-${Date.now()}`;
     const idx = products.findIndex(p => p.id === product.id);
     if (idx >= 0) products[idx] = product;
     else products.unshift(product);
     db.set(STORAGE_KEYS.PRODUCTS, products);
+
+    if (supabase) {
+      supabase.from('products').upsert(Mappers.productToDb(product)).then(({ error }) => {
+        if (error) console.error('Supabase product save error:', error.message);
+      });
+    }
+
     return product;
   }
 };
@@ -130,12 +328,18 @@ export const requirementsRepository = {
   getByStore: (storeId) => db.get(STORAGE_KEYS.REQUIREMENTS).filter(r => r.storeId === storeId),
   save: (requirement) => {
     const requirements = db.get(STORAGE_KEYS.REQUIREMENTS);
+    if (!requirement.id) requirement.id = `req-${requirement.date}-${requirement.storeId}`;
     const idx = requirements.findIndex(r => r.id === requirement.id);
     if (idx >= 0) requirements[idx] = requirement;
     else requirements.unshift(requirement);
     db.set(STORAGE_KEYS.REQUIREMENTS, requirements);
 
-    // Dynamic reactive trigger: if confirmed, update or generate invoice!
+    if (supabase) {
+      supabase.from('daily_requirements').upsert(Mappers.requirementToDb(requirement)).then(({ error }) => {
+        if (error) console.error('Supabase requirement save error:', error.message);
+      });
+    }
+
     if (requirement.status === 'Confirmed') {
       invoicesRepository.syncInvoiceFromRequirement(requirement);
     }
@@ -188,6 +392,13 @@ export const invoicesRepository = {
       invoices.unshift(inv);
     }
     db.set(STORAGE_KEYS.INVOICES, invoices);
+
+    if (supabase) {
+      supabase.from('invoices').upsert(Mappers.invoiceToDb(inv)).then(({ error }) => {
+        if (error) console.error('Supabase invoice save error:', error.message);
+      });
+    }
+
     return inv;
   },
 
@@ -197,6 +408,13 @@ export const invoicesRepository = {
     if (idx >= 0) invoices[idx] = invoice;
     else invoices.unshift(invoice);
     db.set(STORAGE_KEYS.INVOICES, invoices);
+
+    if (supabase) {
+      supabase.from('invoices').upsert(Mappers.invoiceToDb(invoice)).then(({ error }) => {
+        if (error) console.error('Supabase invoice save error:', error.message);
+      });
+    }
+
     return invoice;
   }
 };
@@ -215,6 +433,12 @@ export const paymentsRepository = {
     };
     payments.unshift(newPayment);
     db.set(STORAGE_KEYS.PAYMENTS, payments);
+
+    if (supabase) {
+      supabase.from('payments').insert(Mappers.paymentToDb(newPayment)).then(({ error }) => {
+        if (error) console.error('Supabase payment save error:', error.message);
+      });
+    }
 
     // Update corresponding invoice
     const invoice = invoicesRepository.getById(paymentData.invoiceId);
@@ -240,24 +464,40 @@ export const ordersRepository = {
       return JSON.parse(safeStorage.getItem(STORAGE_KEYS.PO_BUFFERS) || '{}');
     } catch(e) { return {}; }
   },
-  setPOBuffer: (productId, actualQty) => {
+  setPOBuffer: (bufferKey, actualQty) => {
     const buffers = ordersRepository.getPOBuffers();
-    buffers[productId] = actualQty;
+    buffers[bufferKey] = actualQty;
     safeStorage.setItem(STORAGE_KEYS.PO_BUFFERS, JSON.stringify(buffers));
+
+    if (supabase) {
+      supabase.from('po_buffers').upsert({
+        buffer_key: bufferKey,
+        buffer_qty: actualQty
+      }, { onConflict: 'owner_id,buffer_key' }).then(({ error }) => {
+        if (error) console.error('Supabase PO buffer save error:', error.message);
+      });
+    }
   },
   getByDate: (dateStr) => {
     try {
-      const pos = JSON.parse(safeStorage.getItem('dairy_app_po_records_v1') || '{}');
+      const pos = JSON.parse(safeStorage.getItem(STORAGE_KEYS.POS) || '{}');
       return pos[dateStr] || null;
     } catch(e) { return null; }
   },
   savePO: (poRecord) => {
     let pos = {};
     try {
-      pos = JSON.parse(safeStorage.getItem('dairy_app_po_records_v1') || '{}');
+      pos = JSON.parse(safeStorage.getItem(STORAGE_KEYS.POS) || '{}');
     } catch(e) {}
     pos[poRecord.date] = poRecord;
-    safeStorage.setItem('dairy_app_po_records_v1', JSON.stringify(pos));
+    safeStorage.setItem(STORAGE_KEYS.POS, JSON.stringify(pos));
+
+    if (supabase) {
+      supabase.from('purchase_orders').upsert(Mappers.poToDb(poRecord)).then(({ error }) => {
+        if (error) console.error('Supabase PO save error:', error.message);
+      });
+    }
+
     return poRecord;
   }
 };

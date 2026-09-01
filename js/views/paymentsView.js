@@ -70,7 +70,7 @@ export const paymentsView = {
               </tr>
             </thead>
             <tbody>
-              ${invoices.map(inv => `
+              ${invoices.length > 0 ? invoices.map(inv => `
                 <tr>
                   <td style="font-weight:700; color:var(--accent-primary);">${inv.storeName}</td>
                   <td style="font-family:monospace; font-weight:600;">${inv.invoiceNumber}</td>
@@ -89,7 +89,17 @@ export const paymentsView = {
                     `}
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="8">
+                    <div class="empty-state">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                      <h3>No payment receipts or outstanding accounts</h3>
+                      <p>Payment records will appear here once invoices are issued to stores.</p>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>

@@ -1,5 +1,5 @@
 import { getTodayDateString } from './data/seededData.js';
-import { storesRepository, productsRepository, paymentsRepository, requirementsRepository } from './repositories/index.js';
+import { storesRepository, productsRepository, paymentsRepository, requirementsRepository, dataStore } from './repositories/index.js';
 import { workflowEngine } from './services/workflowEngine.js';
 import { aiCopilotService } from './services/aiCopilot.js';
 import { aiAgentEngine } from './services/aiAgentEngine.js';
@@ -643,7 +643,7 @@ function setupAuthUI() {
   }
 }
 
-function updateUIForSession(session) {
+async function updateUIForSession(session) {
   const authContainer = document.getElementById('auth-container');
   const appRoot = document.getElementById('app-root');
   const userEmailDisplay = document.getElementById('user-email-display');
@@ -657,8 +657,13 @@ function updateUIForSession(session) {
     if (userEmailDisplay) userEmailDisplay.textContent = userEmail;
     if (userAvatarBadge) userAvatarBadge.textContent = userEmail.substring(0, 2).toUpperCase();
 
+    // Fetch user-owned data from Supabase
+    await dataStore.syncAllFromSupabase();
+
     if (!window.app) {
       window.app = new AppController();
+    } else {
+      window.app.renderCurrentView();
     }
   } else {
     if (appRoot) appRoot.style.display = 'none';

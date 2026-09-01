@@ -50,7 +50,7 @@ export const invoicesView = {
               </tr>
             </thead>
             <tbody>
-              ${invoices.map(inv => `
+              ${invoices.length > 0 ? invoices.map(inv => `
                 <tr>
                   <td style="font-family: monospace; font-weight: 700;">${inv.invoiceNumber}</td>
                   <td style="font-weight:600; color:var(--accent-primary);">${inv.storeName}</td>
@@ -66,7 +66,17 @@ export const invoicesView = {
                     <button class="btn btn-secondary btn-sm btn-view-invoice" data-invoice-id="${inv.id}">Preview & Pay</button>
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="9">
+                    <div class="empty-state">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                      <h3>No invoices generated yet</h3>
+                      <p>Confirm store daily requirements to automatically generate billing invoices.</p>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>

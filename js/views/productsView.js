@@ -35,7 +35,7 @@ export const productsView = {
               </tr>
             </thead>
             <tbody>
-              ${products.map(p => `
+              ${products.length > 0 ? products.map(p => `
                 <tr>
                   <td style="font-family: monospace; font-weight: 600;">${p.sku}</td>
                   <td style="font-weight: 700; color: var(--text-primary);">${p.name}</td>
@@ -51,7 +51,17 @@ export const productsView = {
                     <button class="btn btn-secondary btn-sm btn-edit-product" data-product-id="${p.id}">Edit</button>
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="9">
+                    <div class="empty-state">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                      <h3>No products in catalog</h3>
+                      <p>Click "Add Product" to add dairy items to your catalog.</p>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>

@@ -4,6 +4,17 @@ import { requirementsRepository, productsRepository, storesRepository } from '..
 export const requirementEntryView = {
   renderDrawerContent: (storeId, dateStr) => {
     const store = storesRepository.getById(storeId);
+    if (!store) {
+      return `
+        <div class="drawer-header">
+          <h2>Store not found</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-close-drawer">✕</button>
+        </div>
+        <div class="drawer-body">
+          <p style="color:var(--text-muted);">Please select a valid store from the stores directory.</p>
+        </div>
+      `;
+    }
     const requirement = workflowEngine.getStoreRequirementForDate(storeId, dateStr);
     const allProducts = productsRepository.getActive();
 

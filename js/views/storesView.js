@@ -57,7 +57,7 @@ export const storesView = {
               </tr>
             </thead>
             <tbody>
-              ${stores.map(store => {
+              ${stores.length > 0 ? stores.map(store => {
                 const outstanding = workflowEngine.getStoreOutstandingBalance(store.id);
                 return `
                   <tr>
@@ -84,7 +84,17 @@ export const storesView = {
                     </td>
                   </tr>
                 `;
-              }).join('')}
+              }).join('') : `
+                <tr>
+                  <td colspan="7">
+                    <div class="empty-state">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                      <h3>No stores found</h3>
+                      <p>Click "Add Store" to add your first distribution store.</p>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>

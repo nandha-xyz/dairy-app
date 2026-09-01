@@ -71,7 +71,7 @@ export const reportsView = {
               </tr>
             </thead>
             <tbody>
-              ${productStats.map(ps => `
+              ${productStats.length > 0 ? productStats.map(ps => `
                 <tr>
                   <td style="font-weight:700;">${ps.product.name}</td>
                   <td><span class="badge badge-draft">${ps.product.category}</span></td>
@@ -79,7 +79,17 @@ export const reportsView = {
                   <td style="color:var(--text-muted);">${ps.product.unit}</td>
                   <td style="text-align:right; font-weight:700;">${workflowEngine.formatCurrency(ps.revenue)}</td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="5">
+                    <div class="empty-state">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                      <h3>No analytics data available</h3>
+                      <p>Add products to your catalog and start generating invoices to view demand trends.</p>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>
