@@ -53,9 +53,14 @@ export const driverDashboardView = {
               <div style="font-size: 0.75rem; text-transform: uppercase; tracking: 0.05em; color: #94A3B8; font-weight: 700;">Driver Field Portal</div>
               <h2 style="font-size: 1.4rem; font-weight: 800; color: white; margin: 0.1rem 0 0 0;">Today's Delivery Manifest</h2>
             </div>
-            <span style="background: rgba(255,255,255,0.15); padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: #60A5FA;">
-              🗓️ ${currentDate}
-            </span>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+              <span style="background: rgba(255,255,255,0.15); padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: #60A5FA;">
+                🗓️ ${currentDate}
+              </span>
+              <button class="btn btn-sm btn-print-challan" data-run-id="${deliveryRuns[0]?.id}" style="background: rgba(255,255,255,0.15); color: white; border: none; padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+                🖨️ Print / Download
+              </button>
+            </div>
           </div>
 
           <!-- Route Progress Bar -->

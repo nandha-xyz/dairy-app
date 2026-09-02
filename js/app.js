@@ -19,6 +19,7 @@ import { settingsView } from './views/settingsView.js';
 import { driverDashboardView } from './views/driverDashboardView.js';
 import { adminStoreMapView } from './views/adminStoreMapView.js';
 import { adminDeliveryRunView } from './views/adminDeliveryRunView.js';
+import { deliveryChallanView } from './views/deliveryChallanView.js';
 
 class AppController {
   constructor() {
@@ -366,6 +367,19 @@ class AppController {
           } catch(err) {
             alert(`⚠️ Delete Run Failed: ${err.message}`);
           }
+        }
+      }
+
+      // Print Challan
+      const printChallanBtn = e.target.closest('.btn-print-challan');
+      if (printChallanBtn && printChallanBtn.dataset.runId) {
+        const challanHtml = deliveryChallanView.render(printChallanBtn.dataset.runId);
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(challanHtml);
+          printWindow.document.close();
+        } else {
+          alert('Popup blocked! Please allow popups for this site to print the challan.');
         }
       }
 

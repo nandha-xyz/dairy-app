@@ -57,9 +57,14 @@ export const adminDeliveryRunView = {
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Progress</div>
                         <div style="font-weight: 700; font-size: 0.95rem; color: #1E293B;">${completedStops} / ${stops.length} Stops Delivered</div>
                       </div>
-                      <button class="btn btn-secondary btn-sm btn-delete-delivery-run" data-run-id="${run.id}" style="color: #DC2626; border-color: #FCA5A5;">
-                        🗑️ Delete Run
-                      </button>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-sm btn-print-challan" data-run-id="${run.id}" style="color: #4F46E5; border-color: #C7D2FE;">
+                          🖨️ Print Challan
+                        </button>
+                        <button class="btn btn-secondary btn-sm btn-delete-delivery-run" data-run-id="${run.id}" style="color: #DC2626; border-color: #FCA5A5;">
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
 
