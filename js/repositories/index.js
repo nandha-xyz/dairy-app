@@ -403,6 +403,7 @@ export const storesRepository = {
 // Products Repository
 export const productsRepository = {
   getAll: () => dataStore.get(STORAGE_KEYS.PRODUCTS),
+  getActive: () => productsRepository.getAll().filter(p => p.active !== false),
   getById: (id) => productsRepository.getAll().find(p => p.id === id),
   save: async (productData) => {
     const productObj = {
