@@ -755,11 +755,11 @@ class AppController {
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
             <div class="form-group">
               <label class="form-label">Selling Price (₹)</label>
-              <input type="number" step="0.5" name="sellingPrice" class="form-input" required value="${isEdit ? product.sellingPrice : 30}" />
+              <input type="number" step="0.01" name="sellingPrice" class="form-input" required value="${isEdit ? product.sellingPrice : 30}" />
             </div>
             <div class="form-group">
               <label class="form-label">Purchase Price (₹)</label>
-              <input type="number" step="0.5" name="purchasePrice" class="form-input" required value="${isEdit ? product.purchasePrice : 24}" />
+              <input type="number" step="0.01" name="purchasePrice" class="form-input" required value="${isEdit ? product.purchasePrice : 24}" />
             </div>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
