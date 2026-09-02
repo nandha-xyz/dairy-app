@@ -1102,11 +1102,24 @@ async function updateUIForSession(session) {
     // Check user role from Supabase user_roles
     // Cache user globally so authService.getUser() can return it synchronously
     window.__dairyAppCurrentUser = session.user;
+    
+    console.log("AUTH USER ID:", session.user.id);
+    console.log("AUTH SESSION EXISTS:", !!session);
+    console.log("AUTH SESSION USER ID:", session.user.id);
+
     const role = await userRolesRepository.getRole(session.user);
     window.currentUserRole = role;
 
-    // Fetch role-specific dataset from Supabase
-    await dataStore.syncAllFromSupabase();
+    // IMMEDIATE UI UPDATE: Do this BEFORE any data fetching can crash!
+    if (!window.app) {
+      window.app = new AppController();
+    }
+    window.app.userRole = role;
+    window.app.handleNavigation();
+
+    if (role === 'driver' && session.user) {
+      startDriverTracking(session.user.id);
+    }
 
     if (userRoleDisplay) {
       if (role === 'admin') {
@@ -1139,14 +1152,16 @@ async function updateUIForSession(session) {
       aiWidget.style.display = role === 'admin' ? 'block' : 'none';
     }
 
-    if (!window.app) {
-      window.app = new AppController();
-    }
-    window.app.userRole = role;
-    window.app.handleNavigation();
-    
-    if (role === 'driver' && session.user) {
-      startDriverTracking(session.user.id);
+    // Fetch role-specific dataset from Supabase LAST
+    try {
+      await dataStore.syncAllFromSupabase();
+      
+      // Re-render the current view now that data has arrived
+      if (window.app) {
+        window.app.renderCurrentView();
+      }
+    } catch (e) {
+      console.error("syncAllFromSupabase CRASHED:", e);
     }
   } else {
     window.__dairyAppCurrentUser = null;
