@@ -383,13 +383,6 @@ class AppController {
         }
       }
 
-      // Enter requirement for store
-      const enterReqBtn = e.target.closest('.btn-enter-req');
-      if (enterReqBtn && enterReqBtn.dataset.storeId) {
-        const storeId = enterReqBtn.dataset.storeId;
-        this.openRequirementDrawer(storeId);
-      }
-
       // View pending stores shortcut
       if (e.target.id === 'btn-view-pending') {
         window.location.hash = '#requirements';
@@ -605,20 +598,6 @@ class AppController {
     } catch(err) {
       alert(`⚠️ Delete Failed: ${err.message}`);
     }
-  }
-
-  openRequirementDrawer(storeId) {
-    const drawer = document.getElementById('requirement-drawer');
-    const store = storesRepository.getById(storeId);
-    if (!drawer || !store) return;
-
-    drawer.innerHTML = requirementEntryView.renderDrawerContent(storeId, this.currentDate);
-    drawer.classList.add('open');
-    requirementEntryView.bindDrawerEvents(storeId, this.currentDate, async () => {
-      this.closeRequirementDrawer();
-      await dataStore.syncAllFromSupabase();
-      this.renderCurrentView();
-    });
   }
 
   closeRequirementDrawer() {
@@ -928,6 +907,7 @@ class AppController {
   bindRequirementsEvents() {
     const locFilter = document.getElementById('req-location-filter');
     const statFilter = document.getElementById('req-status-filter');
+    const grid = document.getElementById('requirements-grid');
 
     if (locFilter && statFilter) {
       const updateReqs = () => {
@@ -939,6 +919,102 @@ class AppController {
       };
       locFilter.addEventListener('change', updateReqs);
       statFilter.addEventListener('change', updateReqs);
+    }
+
+    if (grid) {
+      // Basic Arrow Key Navigation
+      grid.addEventListener('keydown', (e) => {
+        if (!e.target.classList.contains('req-qty-input')) return;
+        const inputs = Array.from(grid.querySelectorAll('.req-qty-input'));
+        const index = inputs.indexOf(e.target);
+        
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (inputs[index + 1]) inputs[index + 1].focus();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (inputs[index - 1]) inputs[index - 1].focus();
+        }
+      });
+
+      // Auto-save debounce
+      let debounceTimeout;
+      grid.addEventListener('input', (e) => {
+        if (e.target.classList.contains('req-qty-input') || e.target.classList.contains('req-status-select')) {
+          clearTimeout(debounceTimeout);
+          const storeId = e.target.dataset.storeId;
+          this.updateLocalTotal(storeId);
+          
+          debounceTimeout = setTimeout(async () => {
+             this.saveStoreRequirement(storeId);
+          }, 800);
+        }
+      });
+    }
+  }
+
+  updateLocalTotal(storeId) {
+    const row = document.querySelector(`tr[data-store-id="${storeId}"]`);
+    if (!row) return;
+    const qtyInputs = row.querySelectorAll('.req-qty-input');
+    let totalAmount = 0;
+    qtyInputs.forEach(input => {
+      const qty = parseFloat(input.value);
+      if (!isNaN(qty) && qty > 0) {
+        totalAmount += qty * parseFloat(input.dataset.price);
+      }
+    });
+    const totalCell = document.getElementById(`total-${storeId}`);
+    if (totalCell) {
+      totalCell.textContent = workflowEngine.formatCurrency(totalAmount);
+    }
+  }
+
+  async saveStoreRequirement(storeId) {
+    const row = document.querySelector(`tr[data-store-id="${storeId}"]`);
+    if (!row) return;
+
+    const qtyInputs = row.querySelectorAll('.req-qty-input');
+    const statusSelect = row.querySelector('.req-status-select');
+    
+    let items = [];
+    let totalAmount = 0;
+
+    qtyInputs.forEach(input => {
+      const qty = parseFloat(input.value);
+      if (!isNaN(qty) && qty > 0) {
+        const price = parseFloat(input.dataset.price);
+        totalAmount += qty * price;
+        items.push({
+          productId: input.dataset.productId,
+          productName: productsRepository.getById(input.dataset.productId)?.name,
+          quantity: qty,
+          rate: price
+        });
+      }
+    });
+
+    const status = statusSelect ? statusSelect.value : 'Draft';
+    const existingReq = requirementsRepository.getByStoreAndDate(storeId, this.currentDate) || {};
+
+    const payload = {
+      ...existingReq,
+      storeId,
+      date: this.currentDate,
+      status: items.length > 0 && status === 'Pending' ? 'Draft' : status,
+      items,
+      totalAmount,
+      lastUpdated: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    };
+
+    try {
+      await requirementsRepository.save(payload);
+      if (statusSelect && items.length > 0 && statusSelect.value === 'Pending') {
+         statusSelect.value = 'Draft';
+      }
+      dataStore.syncAllFromSupabase();
+    } catch (err) {
+      console.error('Failed to auto-save requirement:', err);
     }
   }
 

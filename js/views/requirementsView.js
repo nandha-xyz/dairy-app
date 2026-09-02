@@ -1,4 +1,5 @@
 import { workflowEngine } from '../services/workflowEngine.js';
+import { productsRepository } from '../repositories/index.js';
 
 export const requirementsView = {
   render: (currentDateStr, statusFilter = 'All', locationFilter = 'All') => {
@@ -12,8 +13,80 @@ export const requirementsView = {
     }
 
     const kpis = workflowEngine.getDashboardKPIs(currentDateStr);
+    const activeProducts = productsRepository.getActive();
+
+    // Excel-style grid styling embedded for simplicity
+    const tableStyle = `
+      <style>
+        .excel-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.85rem;
+          white-space: nowrap;
+        }
+        .excel-table th, .excel-table td {
+          border: 1px solid #E2E8F0;
+          padding: 0.4rem 0.5rem;
+        }
+        .excel-table th {
+          background: #F8FAFC;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          font-weight: 700;
+          color: #334155;
+          text-align: center;
+        }
+        .excel-table th.store-col {
+          left: 0;
+          z-index: 20;
+          text-align: left;
+          min-width: 180px;
+        }
+        .excel-table td.store-col {
+          position: sticky;
+          left: 0;
+          background: white;
+          z-index: 5;
+          font-weight: 600;
+          color: #0F172A;
+          box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+        }
+        .grid-input {
+          width: 55px;
+          border: 1px solid transparent;
+          border-radius: 4px;
+          padding: 0.3rem 0.2rem;
+          text-align: center;
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #1E293B;
+          transition: all 0.2s;
+        }
+        .grid-input:hover {
+          border-color: #CBD5E1;
+        }
+        .grid-input:focus {
+          border-color: #2563EB;
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+          background: #EFF6FF;
+        }
+        /* Remove arrows from number input */
+        .grid-input::-webkit-outer-spin-button,
+        .grid-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .grid-input[type=number] {
+          -moz-appearance: textfield;
+        }
+      </style>
+    `;
 
     return `
+      ${tableStyle}
+      
       <!-- Top Summary Cards -->
       <div class="kpi-grid">
         <div class="kpi-card">
@@ -63,60 +136,70 @@ export const requirementsView = {
         </div>
       </div>
 
-      <!-- Store Requirements Table -->
-      <div class="card">
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Store Code</th>
-                <th>Store Name</th>
-                <th>Location</th>
-                <th>Status</th>
-                <th style="text-align:right;">Items Count</th>
-                <th style="text-align:right;">Bill Amount</th>
-                <th>Last Updated</th>
-                <th style="text-align:right;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${storesReqs.length > 0 ? storesReqs.map(s => {
-                const activeItemsCount = s.requirement.items.filter(i => i.quantity > 0).length;
-                return `
-                  <tr>
-                    <td style="font-family: monospace; font-weight: 600;">${s.store.code}</td>
-                    <td style="font-weight:600; color:var(--accent-primary);">${s.store.name}</td>
-                    <td>${s.store.location}</td>
-                    <td>
-                      <span class="badge badge-${s.requirement.status.toLowerCase()}">${s.requirement.status}</span>
-                    </td>
-                    <td style="text-align:right; font-weight:600;">${activeItemsCount} items</td>
-                    <td style="text-align:right; font-weight: 700;">${workflowEngine.formatCurrency(s.requirement.totalAmount)}</td>
-                    <td style="color:var(--text-muted); font-size:0.8rem;">${s.requirement.lastUpdated}</td>
-                    <td style="text-align:right;">
-                      <button class="btn btn-primary btn-sm btn-enter-req" data-store-id="${s.store.id}">
-                        ${s.requirement.status === 'Confirmed' ? 'View/Edit' : 'Enter Requirement'}
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('') : `
-                <tr>
-                  <td colspan="8">
-                    <div class="empty-state">
-                      <div class="empty-state-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                      </div>
-                      <h3>No daily requirements recorded</h3>
-                      <p>Select a store to log today's order requirement quantities or add new retail stores.</p>
-                      <button class="btn btn-primary" id="btn-add-store">+ Add Store</button>
+      <!-- Excel-Style Requirements Grid -->
+      <div class="card" style="padding: 0; overflow-x: auto; max-height: 65vh;">
+        <table class="excel-table" id="requirements-grid">
+          <thead>
+            <tr>
+              <th class="store-col">Store Details</th>
+              ${activeProducts.map(p => `
+                <th title="${p.name} (₹${p.sellingPrice})">
+                  <div style="font-size: 0.75rem;">${p.name.substring(0, 15)}</div>
+                  <div style="font-size: 0.65rem; font-weight: normal; color: #64748B;">₹${p.sellingPrice}</div>
+                </th>
+              `).join('')}
+              <th style="min-width: 100px;">Total Bill</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${storesReqs.length > 0 ? storesReqs.map(s => {
+              return `
+                <tr data-store-id="${s.store.id}">
+                  <td class="store-col">
+                    <div style="display:flex; flex-direction:column;">
+                      <span style="color: var(--accent-primary); font-size: 0.9rem;">${s.store.name}</span>
+                      <span style="font-size:0.7rem; color:#64748B; font-weight:normal;">${s.store.code} | ${s.store.location}</span>
                     </div>
                   </td>
+                  
+                  ${activeProducts.map(product => {
+                    const reqItem = s.requirement.items.find(i => i.productId === product.id);
+                    const qty = reqItem ? reqItem.quantity : '';
+                    return `
+                      <td style="text-align: center;">
+                        <input type="number" 
+                               class="grid-input req-qty-input" 
+                               data-store-id="${s.store.id}" 
+                               data-product-id="${product.id}" 
+                               data-price="${product.sellingPrice}"
+                               data-tax="${product.taxPercent}"
+                               value="${qty || ''}" 
+                               min="0" />
+                      </td>
+                    `;
+                  }).join('')}
+                  
+                  <td style="text-align: right; font-weight: 800; color: #0F172A; font-size: 0.95rem;" id="total-${s.store.id}">
+                    ${workflowEngine.formatCurrency(s.requirement.totalAmount)}
+                  </td>
+                  <td style="text-align: center;">
+                    <select class="req-status-select form-select" data-store-id="${s.store.id}" style="padding: 0.2rem 1.5rem 0.2rem 0.5rem; font-size: 0.8rem; height: auto; min-width: 110px;">
+                      <option value="Pending" ${s.requirement.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                      <option value="Draft" ${s.requirement.status === 'Draft' ? 'selected' : ''}>Draft</option>
+                      <option value="Confirmed" ${s.requirement.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                    </select>
+                  </td>
                 </tr>
-              `}
-            </tbody>
-          </table>
-        </div>
+              `;
+            }).join('') : `<tr><td colspan="${activeProducts.length + 3}" style="text-align:center; padding: 3rem; color: #64748B;">No stores match the current filters.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+        <span style="font-size:0.75rem; color:var(--text-muted);">
+          * Changes are saved automatically. Use Tab or Arrow keys to navigate between products.
+        </span>
       </div>
     `;
   }
