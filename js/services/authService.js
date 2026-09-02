@@ -3,10 +3,13 @@ import { supabase } from './supabaseClient.js';
 export const authService = {
   getSupabaseClient: () => {
     if (!supabase && typeof window !== 'undefined' && window.supabase) {
-      return window.supabase.createClient(
-        'https://xbxtqjurhpkclhfogdsh.supabase.co',
-        'sb_publishable_fVkHK60MIW7voQjXrerZqg_n93tH3sP'
-      );
+      if (!window.__dairyAppDynamicSupabase) {
+        window.__dairyAppDynamicSupabase = window.supabase.createClient(
+          'https://xbxtqjurhpkclhfogdsh.supabase.co',
+          'sb_publishable_fVkHK60MIW7voQjXrerZqg_n93tH3sP'
+        );
+      }
+      return window.__dairyAppDynamicSupabase;
     }
     return supabase;
   },
