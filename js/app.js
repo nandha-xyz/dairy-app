@@ -205,7 +205,10 @@ class AppController {
                 INSERT INTO public.user_roles (user_id, role) VALUES ('${authService.getUser()?.id || 'UUID'}', 'admin');
               </code>
             </div>
-            <button class="btn btn-secondary" onclick="window.location.reload();">🔄 Refresh Page</button>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+              <button class="btn btn-secondary" onclick="window.location.reload();">🔄 Refresh Page</button>
+              <button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Logout & Fix Session</button>
+            </div>
           </div>
         </div>
       `;
