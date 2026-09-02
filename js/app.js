@@ -612,8 +612,7 @@ class AppController {
     const store = storesRepository.getById(storeId);
     if (!drawer || !store) return;
 
-    const currentReq = requirementsRepository.getByStoreAndDate(storeId, this.currentDate);
-    drawer.innerHTML = requirementEntryView.renderDrawer(store, currentReq, this.currentDate);
+    drawer.innerHTML = requirementEntryView.renderDrawerContent(storeId, this.currentDate);
     drawer.classList.add('open');
     requirementEntryView.bindDrawerEvents(storeId, this.currentDate, async () => {
       this.closeRequirementDrawer();
