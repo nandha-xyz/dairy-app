@@ -445,6 +445,7 @@ export const productsRepository = {
 export const requirementsRepository = {
   getAll: () => dataStore.get(STORAGE_KEYS.REQUIREMENTS),
   getByDate: (dateStr) => requirementsRepository.getAll().filter(r => r.date === dateStr),
+  getByStore: (storeId) => requirementsRepository.getAll().filter(r => r.storeId === storeId),
   getByStoreAndDate: (storeId, dateStr) => requirementsRepository.getAll().find(r => r.storeId === storeId && r.date === dateStr),
   save: async (reqObj) => {
     if (supabase) {
@@ -465,6 +466,8 @@ export const requirementsRepository = {
 export const invoicesRepository = {
   getAll: () => dataStore.get(STORAGE_KEYS.INVOICES),
   getById: (id) => invoicesRepository.getAll().find(inv => inv.id === id),
+  getByDate: (dateStr) => invoicesRepository.getAll().filter(i => i.date === dateStr),
+  getByStore: (storeId) => invoicesRepository.getAll().filter(i => i.storeId === storeId),
   save: async (invoiceObj) => {
     if (supabase) {
       const { error } = await supabase.from('invoices').upsert(Mappers.invoiceToDb(invoiceObj));
@@ -493,6 +496,7 @@ export const invoicesRepository = {
 // Payments Repository
 export const paymentsRepository = {
   getAll: () => dataStore.get(STORAGE_KEYS.PAYMENTS),
+  getByStore: (storeId) => paymentsRepository.getAll().filter(p => p.storeId === storeId),
   recordPayment: async (paymentData) => {
     const paymentObj = {
       id: `pay-${Date.now()}-${Math.floor(Math.random()*1000)}`,
@@ -561,26 +565,21 @@ export const userRolesRepository = {
     if (!user) return 'pending';
     if (supabase) {
       try {
-        console.log("ROLE FETCH STARTING FOR USER:", user.id);
+        console.log("ROLE QUERY:", "supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle()");
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
           .maybeSingle();
-        console.log("ROLE FETCH DB RESPONSE:", JSON.stringify({ data, error, user_id: user.id }));
+        console.log("ROLE DATA:", JSON.stringify(data));
+        console.log("ROLE ERROR:", error);
         if (!error && data && data.role) {
-          console.log("ROLE FETCH SUCCESS, RETURNING:", data.role);
           return data.role; // 'admin' or 'driver'
-        } else {
-          console.log("ROLE FETCH FELL THROUGH. ERROR:", error, "DATA:", data);
         }
       } catch (e) {
         console.warn('Could not fetch user role from Supabase:', e);
       }
-    } else {
-      console.error("ROLE FETCH FAILED: supabase CLIENT IS NULL OR UNDEFINED");
     }
-    console.log("ROLE FETCH RETURNING PENDING FALLBACK");
     return 'pending'; // STRICT: Unassigned user is NEVER an admin!
   },
   setRole: async (userId, role) => {
