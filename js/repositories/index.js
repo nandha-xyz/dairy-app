@@ -1,4 +1,13 @@
-import { supabase } from '../services/supabaseClient.js';
+import { authService } from '../services/authService.js';
+
+// Use a Proxy to dynamically fetch the supabase client on every access,
+// avoiding race conditions if the CDN script loads after this file is parsed.
+const supabase = new Proxy({}, {
+  get: function(target, prop) {
+    const client = authService.getSupabaseClient();
+    return client ? client[prop] : undefined;
+  }
+});
 
 const STORAGE_KEYS = {
   STORES: 'dairy_app_stores_v2',
@@ -552,18 +561,26 @@ export const userRolesRepository = {
     if (!user) return 'pending';
     if (supabase) {
       try {
+        console.log("ROLE FETCH STARTING FOR USER:", user.id);
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
           .maybeSingle();
+        console.log("ROLE FETCH DB RESPONSE:", JSON.stringify({ data, error, user_id: user.id }));
         if (!error && data && data.role) {
+          console.log("ROLE FETCH SUCCESS, RETURNING:", data.role);
           return data.role; // 'admin' or 'driver'
+        } else {
+          console.log("ROLE FETCH FELL THROUGH. ERROR:", error, "DATA:", data);
         }
       } catch (e) {
         console.warn('Could not fetch user role from Supabase:', e);
       }
+    } else {
+      console.error("ROLE FETCH FAILED: supabase CLIENT IS NULL OR UNDEFINED");
     }
+    console.log("ROLE FETCH RETURNING PENDING FALLBACK");
     return 'pending'; // STRICT: Unassigned user is NEVER an admin!
   },
   setRole: async (userId, role) => {
