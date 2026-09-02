@@ -233,6 +233,20 @@ export const aiCopilotService = {
     }
 
     // =========================================================================
+    // 9. LIVE DRIVER LOCATION / FLEET TRACKING QUERY
+    // =========================================================================
+    if (q.includes('driver') || q.includes('truck') || q.includes('where') || q.includes('location') || q.includes('track') || q.includes('gps')) {
+      return {
+        type: 'html',
+        message: `🚚 **Live Fleet GPS Tracking:**\n\nI have located the active delivery vehicles. Taking you to the live Store Geolocation Map now...\n\n<div style="margin-top:0.75rem;"><a href="#store-map" class="btn btn-primary btn-sm" style="display:block; text-align:center; text-decoration:none;">📍 Open Live Geolocation Map →</a></div>`,
+        action: {
+          type: 'NAVIGATE',
+          targetView: 'store-map'
+        }
+      };
+    }
+
+    // =========================================================================
     // DEFAULT 2026 AGENTIC RESPONSE WITH ACTIVE CHIPS
     // =========================================================================
     return {
