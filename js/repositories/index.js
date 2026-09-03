@@ -69,7 +69,7 @@ const Mappers = {
     longitude: s.longitude ? Number(s.longitude) : null,
     driver_notes: s.driverNotes || null,
     google_maps_url: s.googleMapsUrl || null,
-    recurring_requirements: s.recurringRequirements || {}
+    recurring_requirements: { ...(s.recurringRequirements || {}), _customPrices: s.customPrices || {} }
   }),
   storeFromDb: (r) => ({
     id: r.id,
@@ -84,7 +84,8 @@ const Mappers = {
     longitude: r.longitude ? Number(r.longitude) : null,
     driverNotes: r.driver_notes || '',
     googleMapsUrl: r.google_maps_url || '',
-    recurringRequirements: r.recurring_requirements || {}
+    recurringRequirements: r.recurring_requirements || {},
+    customPrices: (r.recurring_requirements && r.recurring_requirements._customPrices) ? r.recurring_requirements._customPrices : {}
   }),
 
   productToDb: (p) => ({

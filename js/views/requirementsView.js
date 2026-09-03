@@ -166,13 +166,15 @@ export const requirementsView = {
                   ${activeProducts.map(product => {
                     const reqItem = s.requirement.items.find(i => i.productId === product.id);
                     const qty = reqItem ? reqItem.quantity : '';
+                    const actualPrice = (s.store.customPrices && s.store.customPrices[product.id]) ? s.store.customPrices[product.id] : product.sellingPrice;
+                    const priceIndicator = (s.store.customPrices && s.store.customPrices[product.id]) ? 'border-bottom: 2px solid #2563EB;' : '';
                     return `
-                      <td style="text-align: center;">
+                      <td style="text-align: center; ${priceIndicator}" title="Price: ₹${actualPrice}">
                         <input type="number" 
                                class="grid-input req-qty-input" 
                                data-store-id="${s.store.id}" 
                                data-product-id="${product.id}" 
-                               data-price="${product.sellingPrice}"
+                               data-price="${actualPrice}"
                                data-tax="${product.taxPercent}"
                                value="${qty || ''}" 
                                min="0" />

@@ -628,9 +628,10 @@ class AppController {
     if (!backdrop) return;
     const store = storeId ? storesRepository.getById(storeId) : null;
     const isEdit = !!store;
+    const activeProducts = productsRepository.getActive();
 
     backdrop.innerHTML = `
-      <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-card" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-color);">
           <h3 style="font-size:1.2rem; font-weight:800; margin:0;">${isEdit ? '✏️ Edit Store & Geolocation Details' : '➕ Register New Retail Store'}</h3>
           <button id="btn-cancel-modal" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem;">✕</button>
@@ -686,6 +687,26 @@ class AppController {
             <input type="text" name="driverNotes" class="form-input" placeholder="e.g. Deliver via side entrance behind main gate" value="${isEdit ? (store.driverNotes || '') : ''}" />
           </div>
 
+          <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <h4 style="font-weight: 700; margin-bottom: 0.5rem;">Custom Product Pricing (Optional)</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Override the global catalog selling price for this specific store. Leave blank to use standard pricing.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; background: #F8FAFC; padding: 1rem; border-radius: 8px; border: 1px solid #E2E8F0;">
+              ${activeProducts.map(p => {
+                const customPrice = (isEdit && store.customPrices && store.customPrices[p.id]) ? store.customPrices[p.id] : '';
+                return `
+                  <div>
+                    <label style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:0.25rem;">${p.name}</label>
+                    <div style="position:relative;">
+                      <span style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.85rem;">₹</span>
+                      <input type="number" step="any" name="customPrice_${p.id}" class="form-input" style="padding-left:20px; font-size:0.85rem;" placeholder="Std: ₹${p.sellingPrice}" value="${customPrice}" />
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
             <button type="button" id="btn-cancel-modal" class="btn btn-secondary">Cancel</button>
             <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Save Store'}</button>
@@ -712,8 +733,16 @@ class AppController {
           googleMapsUrl: formData.get('googleMapsUrl'),
           contactPerson: formData.get('contactPerson'),
           phone: formData.get('phone'),
-          driverNotes: formData.get('driverNotes')
+          driverNotes: formData.get('driverNotes'),
+          customPrices: {}
         };
+
+        activeProducts.forEach(p => {
+          const val = formData.get(`customPrice_${p.id}`);
+          if (val !== null && val.trim() !== '') {
+            storeData.customPrices[p.id] = Number(val);
+          }
+        });
 
         try {
           if (sId) {
