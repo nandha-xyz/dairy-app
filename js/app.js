@@ -388,6 +388,24 @@ class AppController {
         window.location.hash = '#requirements';
       }
 
+      // Enter requirement for store from dashboard (navigates to grid)
+      const enterReqBtn = e.target.closest('.btn-enter-req');
+      if (enterReqBtn) {
+        window.location.hash = '#requirements';
+        const storeIdToFocus = enterReqBtn.dataset.storeId;
+        if (storeIdToFocus) {
+          setTimeout(() => {
+            const input = document.querySelector(`.req-qty-input[data-store-id="${storeIdToFocus}"]`);
+            if (input) {
+              input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              input.focus();
+              input.style.backgroundColor = '#FEF3C7'; // Highlight briefly
+              setTimeout(() => input.style.backgroundColor = '', 2000);
+            }
+          }, 200); // Wait for hash change re-render
+        }
+      }
+
       // Create PO shortcut
       if (e.target.id === 'btn-create-po') {
         window.location.hash = '#orders';
