@@ -25,8 +25,12 @@ export const requirementsView = {
           white-space: nowrap;
         }
         .excel-table th, .excel-table td {
-          border: 1px solid #E2E8F0;
+          border: 1px solid #CBD5E1;
           padding: 0.4rem 0.5rem;
+        }
+        .excel-table td.input-cell {
+          padding: 0 !important;
+          position: relative;
         }
         .excel-table th {
           background: #F8FAFC;
@@ -36,6 +40,7 @@ export const requirementsView = {
           font-weight: 700;
           color: #334155;
           text-align: center;
+          border-bottom: 2px solid #94A3B8;
         }
         .excel-table th.store-col {
           left: 0;
@@ -46,31 +51,45 @@ export const requirementsView = {
         .excel-table td.store-col {
           position: sticky;
           left: 0;
-          background: white;
+          background: #F8FAFC;
           z-index: 5;
           font-weight: 600;
           color: #0F172A;
-          box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+          border-right: 2px solid #94A3B8;
+        }
+        .excel-table tbody tr:hover td {
+          background-color: #F1F5F9;
+        }
+        .excel-table tbody tr:hover td.store-col {
+          background-color: #E2E8F0;
         }
         .grid-input {
-          width: 55px;
-          border: 1px solid transparent;
-          border-radius: 4px;
-          padding: 0.3rem 0.2rem;
-          text-align: center;
-          font-size: 0.9rem;
+          width: 100%;
+          height: 100%;
+          min-height: 40px;
+          min-width: 60px;
+          border: none;
+          background: transparent;
+          padding: 0 0.5rem;
+          text-align: right;
+          font-size: 0.95rem;
           font-weight: 600;
           color: #1E293B;
-          transition: all 0.2s;
+          cursor: cell;
+          border-radius: 0;
         }
         .grid-input:hover {
-          border-color: #CBD5E1;
+          background-color: rgba(37,99,235,0.05);
         }
         .grid-input:focus {
-          border-color: #2563EB;
-          outline: none;
-          box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
-          background: #EFF6FF;
+          outline: 2px solid #217346;
+          outline-offset: -2px;
+          background: white;
+          cursor: text;
+        }
+        .grid-input::placeholder {
+          color: #CBD5E1;
+          font-weight: 400;
         }
         /* Remove arrows from number input */
         .grid-input::-webkit-outer-spin-button,
@@ -169,7 +188,7 @@ export const requirementsView = {
                     const actualPrice = (s.store.customPrices && s.store.customPrices[product.id]) ? s.store.customPrices[product.id] : product.sellingPrice;
                     const priceIndicator = (s.store.customPrices && s.store.customPrices[product.id]) ? 'border-bottom: 2px solid #2563EB;' : '';
                     return `
-                      <td style="text-align: center; ${priceIndicator}" title="Price: ₹${actualPrice}">
+                      <td class="input-cell" style="text-align: right; ${priceIndicator}" title="Price: ₹${actualPrice}">
                         <input type="number" 
                                class="grid-input req-qty-input" 
                                data-store-id="${s.store.id}" 
@@ -177,6 +196,7 @@ export const requirementsView = {
                                data-price="${actualPrice}"
                                data-tax="${product.taxPercent}"
                                value="${qty || ''}" 
+                               placeholder="-"
                                min="0" />
                       </td>
                     `;
